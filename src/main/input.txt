@@ -1,0 +1,5 @@
+class Test {
+
+int foo(int anInt, int[] anArray, boolean aBool, String aString) {return a;}
+
+}

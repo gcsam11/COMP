@@ -21,7 +21,7 @@ RSQUARE : ']';
 COMMA : ',';
 AND : '&&';
 LT : '<';
-NOT : '!';
+NEG : '!';
 
 CLASS : 'class' ;
 INT : 'int' ;
@@ -57,56 +57,58 @@ program
     ;
 
 importDeclaration
-    : IMPORT ID ( DOT ID )* SEMI
+    : IMPORT ID ( DOT ID )* SEMI #ImportDecl
     ;
 
 classDeclaration
-    : CLASS ID ( EXTENDS ID )? LCURLY ( varDeclaration )* ( methodDeclaration )* RCURLY
+    : CLASS ID ( EXTENDS ID )? LCURLY ( varDeclaration )* ( methodDeclaration )* RCURLY #ClassDecl
     ;
 
 varDeclaration
-    : type ID SEMI
+    : type ID SEMI #VarDecl
     ;
 
 methodDeclaration
-    : (PUBLIC)? type ID LPAREN ( type ID ( COMMA type ID )* )? RPAREN LCURLY ( varDeclaration)* ( statement )* RETURN expression SEMI RCURLY
-    | (PUBLIC)? STATIC VOID MAIN LPAREN STRING LSQUARE RSQUARE ID RPAREN LCURLY ( varDeclaration )* ( statement )* RCURLY
+    : (PUBLIC)? type ID LPAREN ( type ID ( COMMA type ID )* )? RPAREN LCURLY ( varDeclaration)* ( stmt )* RETURN expr SEMI RCURLY #MethodReturnDecl
+    | (PUBLIC)? STATIC VOID MAIN LPAREN STRING LSQUARE RSQUARE ID RPAREN LCURLY ( varDeclaration )* ( stmt )* RCURLY #MainMethodDecl
     ;
 
 type
-    : INT LSQUARE RSQUARE
-    | INT ELLIPSIS
-    | BOOLEAN
-    | INT
-    | ID
-    | anIntArray
+    : INT LSQUARE RSQUARE #IntArrayType
+    | INT ELLIPSIS #IntEllipsisType
+    | BOOLEAN #BooleanType
+    | INT #IntType
+    | STRING #StringType
+    | ID #IdentifierType
+    | anIntArray #AnIntArrayType
     ;
 
-statement
-    : LCURLY ( statement )* RCURLY
-    | IF LPAREN expression RPAREN statement ELSE statement
-    | WHILE LPAREN expression RPAREN statement
-    | expression SEMI
-    | ID EQUALS expression SEMI
-    | ID LSQUARE expression RSQUARE EQUALS expression SEMI
+stmt
+    : LCURLY ( stmt )* RCURLY #Block
+    | IF LPAREN expr RPAREN stmt ELSE stmt #IfElse
+    | WHILE LPAREN expr RPAREN stmt #While
+    | expr SEMI #ExprStmt
+    | ID EQUALS expr SEMI #Assign
+    | ID LSQUARE expr RSQUARE EQUALS expr SEMI #ArrayAssign
     ;
 
-expression
-    : expression (DOT LENGTH | DOT ID LPAREN ( expression ( COMMA expression )* )? RPAREN | LPAREN expression RPAREN | expression LSQUARE expression RSQUARE)
-    | expression (NOT) expression
-    | (NEW INT LSQUARE expression RSQUARE | NEW ID LPAREN RPAREN)
-    | expression (MUL | DIV) expression
-    | expression (ADD | SUB) expression
-    | expression (LT) expression
-    | expression (AND) expression
-    | LSQUARE ( expression ( COMMA expression )* )? RSQUARE
-    | INT
-    | TRUE
-    | FALSE
-    | ID
-    | THIS
-    | NULL
-    | INTEGER
+expr
+    : expr (DOT LENGTH | DOT ID LPAREN ( expr ( COMMA expr )* )? RPAREN | LSQUARE expr RSQUARE) #MemberOrArrayAccessOp
+    | LPAREN expr RPAREN #ParenOp
+    | NEG expr #UnaryOp
+    | (NEW INT LSQUARE expr RSQUARE | NEW ID LPAREN RPAREN) #NewOp
+    | expr (MUL | DIV) expr #BinaryOp
+    | expr (ADD | SUB) expr #BinaryOp
+    | expr (LT) expr #BinaryOp
+    | expr (AND) expr #BinaryOp
+    | LSQUARE ( expr ( COMMA expr )* )? RSQUARE #ArrayCreation
+    | INT #Int
+    | TRUE #True
+    | FALSE #False
+    | ID #Identifier
+    | THIS #This
+    | NULL #Null
+    | INTEGER #Integer
     ;
 
 anIntArray
