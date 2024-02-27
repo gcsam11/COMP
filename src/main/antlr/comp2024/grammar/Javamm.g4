@@ -57,20 +57,20 @@ program
     ;
 
 importDeclaration
-    : IMPORT ID ( DOT ID )* SEMI #ImportDecl
+    : op=IMPORT value+=ID ( DOT value+=ID )* SEMI #ImportDecl
     ;
 
 classDeclaration
-    : CLASS ID ( EXTENDS ID )? LCURLY ( varDeclaration )* ( methodDeclaration )* RCURLY #ClassDecl
+    : CLASS value+=ID ( EXTENDS value+=ID )? LCURLY ( varDeclaration )* ( methodDeclaration )* RCURLY #ClassDecl
     ;
 
 varDeclaration
-    : type ID SEMI #VarDecl
+    : type value=ID SEMI #VarDecl
     ;
 
 methodDeclaration
-    : (PUBLIC)? type ID LPAREN ( type ID ( COMMA type ID )* )? RPAREN LCURLY ( varDeclaration)* ( stmt )* RETURN expr SEMI RCURLY #MethodReturnDecl
-    | (PUBLIC)? STATIC VOID MAIN LPAREN STRING LSQUARE RSQUARE ID RPAREN LCURLY ( varDeclaration )* ( stmt )* RCURLY #MainMethodDecl
+    : (PUBLIC)? type var+=ID LPAREN ( type var+=ID ( COMMA type var+=ID )* )? RPAREN LCURLY ( varDeclaration)* ( stmt )* RETURN expr SEMI RCURLY #MethodReturnDecl
+    | (PUBLIC)? STATIC VOID MAIN LPAREN STRING LSQUARE RSQUARE var=ID RPAREN LCURLY ( varDeclaration )* ( stmt )* RCURLY #MainMethodDecl
     ;
 
 type
@@ -88,27 +88,26 @@ stmt
     | IF LPAREN expr RPAREN stmt ELSE stmt #IfElse
     | WHILE LPAREN expr RPAREN stmt #While
     | expr SEMI #ExprStmt
-    | ID EQUALS expr SEMI #Assign
-    | ID LSQUARE expr RSQUARE EQUALS expr SEMI #ArrayAssign
+    | var=ID EQUALS expr SEMI #Assign
+    | var=ID LSQUARE expr RSQUARE EQUALS expr SEMI #ArrayAssign
     ;
-
 expr
-    : expr (DOT LENGTH | DOT ID LPAREN ( expr ( COMMA expr )* )? RPAREN | LSQUARE expr RSQUARE) #MemberOrArrayAccessOp
-    | LPAREN expr RPAREN #ParenOp
-    | NEG expr #UnaryOp
-    | (NEW INT LSQUARE expr RSQUARE | NEW ID LPAREN RPAREN) #NewOp
-    | expr (MUL | DIV) expr #BinaryOp
-    | expr (ADD | SUB) expr #BinaryOp
-    | expr (LT) expr #BinaryOp
-    | expr (AND) expr #BinaryOp
+    : expr (op+=DOT func=LENGTH | op+=DOT value=ID LPAREN ( expr ( COMMA expr )* )? RPAREN | LSQUARE expr RSQUARE) #MemberOrArrayAccessOp
+    | op=LPAREN expr RPAREN #ParenOp
+    | op=NEG expr #UnaryOp
+    | (op+=NEW value+=INT LSQUARE expr RSQUARE | op+=NEW value+=ID LPAREN RPAREN) #NewOp
+    | expr op=(MUL | DIV) expr #BinaryOp
+    | expr op=(ADD | SUB) expr #BinaryOp
+    | expr op=LT expr #BinaryOp
+    | expr op=AND expr #BinaryOp
     | LSQUARE ( expr ( COMMA expr )* )? RSQUARE #ArrayCreation
-    | INT #Int
-    | TRUE #True
-    | FALSE #False
-    | ID #Identifier
-    | THIS #This
-    | NULL #Null
-    | INTEGER #Integer
+    | value=INT #Int
+    | value=TRUE #True
+    | value=FALSE #False
+    | value=ID #Identifier
+    | value=THIS #This
+    | value=NULL #Null
+    | value=INTEGER #Integer
     ;
 
 anIntArray
