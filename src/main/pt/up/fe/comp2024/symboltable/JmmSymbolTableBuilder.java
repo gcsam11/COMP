@@ -7,10 +7,7 @@ import pt.up.fe.comp2024.ast.Kind;
 import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static pt.up.fe.comp2024.ast.Kind.METHOD_DECL;
 import static pt.up.fe.comp2024.ast.Kind.VAR_DECL;
@@ -38,7 +35,7 @@ public class JmmSymbolTableBuilder {
         Map<String, Type> map = new HashMap<>();
 
         classDecl.getChildren(METHOD_DECL).stream()
-                .forEach(method -> map.put(method.get("name"), new Type(TypeUtils.getIntTypeName(), false)));
+                .forEach(method -> map.put(method.get("name"), new Type(method.get("returnType"), Boolean.parseBoolean(method.getChild(0).get("isArray")))));
 
         return map;
     }
@@ -51,9 +48,15 @@ public class JmmSymbolTableBuilder {
         var intType = new Type(TypeUtils.getIntTypeName(), false);
 
         classDecl.getChildren(METHOD_DECL).stream()
-                .forEach(method -> map.put(method.get("name"), Arrays.asList(new Symbol(intType, method.getJmmChild(1).get("name")))));
+                .forEach(method -> map.put(method.get("name"), getMethodDeclParams(method)));
 
         return map;
+    }
+
+    public static List<Symbol> getMethodDeclParams(JmmNode methodDecl) {
+            return methodDecl.getChildren(Kind.PARAM).stream()
+                    .map(param -> new Symbol(new Type(param.get("type"), Boolean.parseBoolean(param.get("isArray"))), param.get("var")))
+                    .toList();
     }
 
     private static Map<String, List<Symbol>> buildLocals(JmmNode classDecl) {
@@ -61,15 +64,13 @@ public class JmmSymbolTableBuilder {
 
         Map<String, List<Symbol>> map = new HashMap<>();
 
-
         classDecl.getChildren(METHOD_DECL).stream()
                 .forEach(method -> map.put(method.get("name"), getLocalsList(method)));
 
         return map;
     }
 
-    private static List<String> buildMethods(JmmNode classDecl) {
-
+    private static List<String> buildMethods(JmmNode classDecl){
         return classDecl.getChildren(METHOD_DECL).stream()
                 .map(method -> method.get("name"))
                 .toList();

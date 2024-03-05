@@ -57,30 +57,34 @@ program
     ;
 
 importDeclaration
-    : op=IMPORT value+=ID ( DOT value+=ID )* SEMI #ImportDecl
+    : op=IMPORT name=ID ( DOT extension=ID )* SEMI #ImportDecl
     ;
 
 classDeclaration
-    : CLASS value+=ID ( EXTENDS value+=ID )? LCURLY ( varDeclaration )* ( methodDeclaration )* RCURLY #ClassDecl
+    : CLASS name=ID ( EXTENDS extension=ID )? LCURLY ( varDeclaration )* ( methodDeclaration )* RCURLY #ClassDecl
     ;
 
 varDeclaration
-    : type value=ID SEMI #VarDecl
+    : type name=ID SEMI #VarDecl
     ;
 
-methodDeclaration
-    : (PUBLIC)? type var+=ID LPAREN ( type var+=ID ( COMMA type var+=ID )* )? RPAREN LCURLY ( varDeclaration)* ( stmt )* RETURN expr SEMI RCURLY #MethodReturnDecl
-    | (PUBLIC)? STATIC VOID MAIN LPAREN STRING LSQUARE RSQUARE var=ID RPAREN LCURLY ( varDeclaration )* ( stmt )* RCURLY #MainMethodDecl
+methodDeclaration locals [boolean isPublic=false]
+    : (PUBLIC {$isPublic=true;})? type name=ID LPAREN ( param ( COMMA param )* )? RPAREN LCURLY (varDeclaration)* ( stmt )* RETURN expr SEMI RCURLY #MethodReturnDecl
+    | (PUBLIC {$isPublic=true;})? STATIC VOID name=MAIN LPAREN STRING LSQUARE RSQUARE ID RPAREN LCURLY ( varDeclaration )* ( stmt )* RCURLY #MainMethodDecl
     ;
 
-type
-    : INT LSQUARE RSQUARE #IntArrayType
+param
+    : type var=ID
+    ;
+
+type locals [boolean isArray=false]
+    : INT (LSQUARE RSQUARE {$isArray=true;})? #IntArrayType
     | INT ELLIPSIS #IntEllipsisType
     | BOOLEAN #BooleanType
     | INT #IntType
     | STRING #StringType
     | ID #IdentifierType
-    | anIntArray #AnIntArrayType
+    | (anIntArray {$isArray=true;})? #AnIntArrayType
     ;
 
 stmt
@@ -92,22 +96,22 @@ stmt
     | var=ID LSQUARE expr RSQUARE EQUALS expr SEMI #ArrayAssign
     ;
 expr
-    : expr (op+=DOT func=LENGTH | op+=DOT value=ID LPAREN ( expr ( COMMA expr )* )? RPAREN | LSQUARE expr RSQUARE) #MemberOrArrayAccessOp
-    | op=LPAREN expr RPAREN #ParenOp
-    | op=NEG expr #UnaryOp
+    : expr (op+=DOT func=LENGTH | op+=DOT value+=ID LPAREN ( expr ( COMMA expr )* )? RPAREN | LSQUARE expr RSQUARE) #MemberOrArrayAccessOp
+    | op+=LPAREN expr RPAREN #ParenOp
+    | op+=NEG expr #UnaryOp
     | (op+=NEW value+=INT LSQUARE expr RSQUARE | op+=NEW value+=ID LPAREN RPAREN) #NewOp
-    | expr op=(MUL | DIV) expr #BinaryOp
-    | expr op=(ADD | SUB) expr #BinaryOp
-    | expr op=LT expr #BinaryOp
-    | expr op=AND expr #BinaryOp
+    | expr op+=(MUL | DIV) expr #BinaryOp
+    | expr op+=(ADD | SUB) expr #BinaryOp
+    | expr op+=LT expr #BinaryOp
+    | expr op+=AND expr #BinaryOp
     | LSQUARE ( expr ( COMMA expr )* )? RSQUARE #ArrayCreation
-    | value=INT #Int
-    | value=TRUE #True
-    | value=FALSE #False
-    | value=ID #Identifier
-    | value=THIS #This
-    | value=NULL #Null
-    | value=INTEGER #Integer
+    | value+=INT #Int
+    | value+=TRUE #True
+    | value+=FALSE #False
+    | value+=ID #Identifier
+    | value+=THIS #This
+    | value+=NULL #Null
+    | value+=INTEGER #Integer
     ;
 
 anIntArray

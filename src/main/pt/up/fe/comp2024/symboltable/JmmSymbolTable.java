@@ -52,7 +52,7 @@ public class JmmSymbolTable implements SymbolTable {
 
     @Override
     public List<String> getMethods() {
-        return Collections.unmodifiableList(methods);
+        return methods;
     }
 
     @Override
