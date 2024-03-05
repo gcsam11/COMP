@@ -38,7 +38,6 @@ NEW : 'new' ;
 BOOLEAN : 'boolean' ;
 STATIC : 'static' ;
 VOID : 'void' ;
-MAIN : 'main' ;
 STRING : 'String' ;
 IMPORT : 'import';
 EXTENDS : 'extends';
@@ -61,16 +60,15 @@ importDeclaration
     ;
 
 classDeclaration
-    : CLASS className=ID ( EXTENDS extension=ID )? LCURLY ( varDeclaration )* ( methodDecl )* RCURLY #ClassDecl
+    : CLASS className=ID ( EXTENDS extension=ID )? LCURLY ( varDeclaration )* ( methodDeclaration )* RCURLY #ClassDecl
     ;
 
 varDeclaration
     : type varName=ID SEMI #VarDecl
     ;
 
-methodDecl locals [boolean isPublic=false]
-    : (PUBLIC {$isPublic=true;})? type name=ID LPAREN ( param ( COMMA param )* )? RPAREN LCURLY (varDeclaration)* ( stmt )* RETURN expr SEMI RCURLY #MethodReturnDecl
-    | (PUBLIC {$isPublic=true;})? STATIC VOID name=MAIN LPAREN STRING LSQUARE RSQUARE ID RPAREN LCURLY ( varDeclaration )* ( stmt )* RCURLY #MainMethodDecl
+methodDeclaration locals [boolean isPublic=false]
+    : (PUBLIC {$isPublic=true;})? (STATIC)? type name=ID LPAREN ( param ( COMMA param )* )? RPAREN LCURLY (varDeclaration)* ( stmt )* RCURLY #MethodDecl
     ;
 
 param
@@ -83,7 +81,9 @@ type locals [boolean isArray=false]
     | typeName=BOOLEAN #BooleanType
     | typeName=INT #IntType
     | typeName=STRING #StringType
+    | typeName=STRING LSQUARE RSQUARE {$isArray=true;} #StringArrayType
     | typeName=ID #IdentifierType
+    | typeName=VOID #VoidType
     | (anIntArray {$isArray=true;}) #AnIntArrayType
     ;
 
@@ -94,6 +94,7 @@ stmt
     | expr SEMI #ExprStmt
     | var=ID EQUALS expr SEMI #Assign
     | var=ID LSQUARE expr RSQUARE EQUALS expr SEMI #ArrayAssign
+    | RETURN expr SEMI #Return
     ;
 expr
     : expr (op+=DOT func=LENGTH | op+=DOT value+=ID LPAREN ( expr ( COMMA expr )* )? RPAREN | LSQUARE expr RSQUARE) #MemberOrArrayAccessOp
