@@ -17,6 +17,7 @@ public enum Kind {
     RETURN_STMT,
     BINARY_EXPR,
     INTEGER_LITERAL,
+    IMPORT_DECL,
     VAR_REF_EXPR;
 
 
