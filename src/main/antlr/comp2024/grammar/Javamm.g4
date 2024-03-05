@@ -45,7 +45,7 @@ EXTENDS : 'extends';
 LENGTH : 'length';
 
 INTEGER : '0' | [1-9][0-9]* ;
-ID : [a-zA-Z_$] [a-zA-Z0-9_$]*;
+ID : [a-zA-Z_$][a-zA-Z0-9_$]*;
 
 ML_COMMENT : '/*' .*? '*/' -> skip ;
 EOL_COMMENT : '//' ~[\r\n]* -> skip ;
@@ -57,18 +57,18 @@ program
     ;
 
 importDeclaration
-    : op=IMPORT name=ID ( DOT extension=ID )* SEMI #ImportDecl
+    : IMPORT importName=ID ( DOT extension=ID )* SEMI #ImportDecl
     ;
 
 classDeclaration
-    : CLASS name=ID ( EXTENDS extension=ID )? LCURLY ( varDeclaration )* ( methodDeclaration )* RCURLY #ClassDecl
+    : CLASS className=ID ( EXTENDS extension=ID )? LCURLY ( varDeclaration )* ( methodDecl )* RCURLY #ClassDecl
     ;
 
 varDeclaration
-    : type name=ID SEMI #VarDecl
+    : type varName=ID SEMI #VarDecl
     ;
 
-methodDeclaration locals [boolean isPublic=false]
+methodDecl locals [boolean isPublic=false]
     : (PUBLIC {$isPublic=true;})? type name=ID LPAREN ( param ( COMMA param )* )? RPAREN LCURLY (varDeclaration)* ( stmt )* RETURN expr SEMI RCURLY #MethodReturnDecl
     | (PUBLIC {$isPublic=true;})? STATIC VOID name=MAIN LPAREN STRING LSQUARE RSQUARE ID RPAREN LCURLY ( varDeclaration )* ( stmt )* RCURLY #MainMethodDecl
     ;
@@ -78,13 +78,13 @@ param
     ;
 
 type locals [boolean isArray=false]
-    : name=INT (LSQUARE RSQUARE {$isArray=true;})? #IntArrayType
-    | name=INT ELLIPSIS #IntEllipsisType
-    | name=BOOLEAN #BooleanType
-    | name=INT #IntType
-    | name=STRING #StringType
-    | name=ID #IdentifierTyp
-    | (anIntArray {$isArray=true;})? #AnIntArrayType
+    : typeName=INT LSQUARE RSQUARE {$isArray=true;} #IntArrayType
+    | typeName=INT ELLIPSIS #IntEllipsisType
+    | typeName=BOOLEAN #BooleanType
+    | typeName=INT #IntType
+    | typeName=STRING #StringType
+    | typeName=ID #IdentifierType
+    | (anIntArray {$isArray=true;}) #AnIntArrayType
     ;
 
 stmt
@@ -115,5 +115,5 @@ expr
     ;
 
 anIntArray
-    : INT LSQUARE ( INTEGER ( COMMA INTEGER )* )? RSQUARE
+    : typeName=INT LSQUARE ( INTEGER ( COMMA INTEGER )* )? RSQUARE
     ;
