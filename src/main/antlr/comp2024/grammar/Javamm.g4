@@ -74,16 +74,16 @@ methodDeclaration locals [boolean isPublic=false]
     ;
 
 param
-    : type var=ID
+    : type var=ID #ParamDecl
     ;
 
 type locals [boolean isArray=false]
-    : INT (LSQUARE RSQUARE {$isArray=true;})? #IntArrayType
-    | INT ELLIPSIS #IntEllipsisType
-    | BOOLEAN #BooleanType
-    | INT #IntType
-    | STRING #StringType
-    | ID #IdentifierType
+    : name=INT (LSQUARE RSQUARE {$isArray=true;})? #IntArrayType
+    | name=INT ELLIPSIS #IntEllipsisType
+    | name=BOOLEAN #BooleanType
+    | name=INT #IntType
+    | name=STRING #StringType
+    | name=ID #IdentifierTyp
     | (anIntArray {$isArray=true;})? #AnIntArrayType
     ;
 
