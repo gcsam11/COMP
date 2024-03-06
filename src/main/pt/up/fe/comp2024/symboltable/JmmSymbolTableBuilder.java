@@ -70,16 +70,9 @@ public class JmmSymbolTableBuilder {
     }
 
     private static List<String> buildMethods(JmmNode classDecl){
-        var list = new ArrayList<String>();
-        if(!classDecl.getChildren(Kind.MAIN_DECL).isEmpty())
-            list.addAll(classDecl.getChildren(Kind.MAIN_DECL).stream()
-                    .map(method -> method.get("name")).toList());
-
-        list.addAll(classDecl.getChildren(Kind.METHOD_DECL).stream()
+        return classDecl.getChildren(Kind.METHOD_DECL).stream()
                 .map(method -> method.get("name"))
-                .toList());
-
-        return list;
+                .toList();
     }
 
 
