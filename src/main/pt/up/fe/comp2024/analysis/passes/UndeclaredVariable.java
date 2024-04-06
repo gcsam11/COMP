@@ -17,11 +17,13 @@ import pt.up.fe.specs.util.SpecsCheck;
 public class UndeclaredVariable extends AnalysisVisitor {
 
     private String currentMethod;
-
     @Override
     public void buildVisitor() {
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
-        addVisit(Kind.VAR_REF_EXPR, this::visitVarRefExpr);
+        addVisit(Kind.RETURN, this::visitReturnExpr);
+        //addVisit(Kind.VAR_REF_EXPR, this::visitVarRefExpr);
+        // Add when try to send as parameter to other function case
+        // Add when try to use in expression
     }
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
@@ -29,8 +31,43 @@ public class UndeclaredVariable extends AnalysisVisitor {
         return null;
     }
 
+    private Void visitReturnExpr(JmmNode varReturnExpress, SymbolTable table) {
+
+        var returnStmtVar = varReturnExpress.getChildren().get(0).get("ID");
+
+        // Var is a field, return
+        if (table.getFields().stream()
+                .anyMatch(param -> param.getName().equals(returnStmtVar))) {
+            return null;
+        }
+
+        // Var is a parameter, return
+        if (table.getParameters(currentMethod).stream()
+                .anyMatch(param -> param.getName().equals(returnStmtVar))) {
+            return null;
+        }
+
+        // Var is a declared variable, return
+        if (table.getLocalVariables(currentMethod).stream()
+                .anyMatch(varDecl -> varDecl.getName().equals(returnStmtVar))) {
+            return null;
+        }
+
+        // Create error report
+        var message = String.format("Variable '%s' does not exist.", returnStmtVar);
+        addReport(Report.newError(
+                Stage.SEMANTIC,
+                NodeUtils.getLine(varReturnExpress),
+                NodeUtils.getColumn(varReturnExpress),
+                message,
+                null)
+        );
+
+        return null;
+    }
+
     private Void visitVarRefExpr(JmmNode varRefExpr, SymbolTable table) {
-        SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
+        //SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
 
         // Check if exists a parameter or variable declaration with the same name as the variable reference
         var varRefName = varRefExpr.get("name");
@@ -65,6 +102,4 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         return null;
     }
-
-
 }
