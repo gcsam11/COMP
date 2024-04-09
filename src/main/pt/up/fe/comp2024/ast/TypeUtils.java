@@ -18,18 +18,19 @@ public class TypeUtils {
      *
      * @param expr
      * @param table
+     * @param currentMethod
      * @return
      */
-    public static Type getExprType(JmmNode expr, SymbolTable table) {
+    public static Type getExprType(JmmNode expr, SymbolTable table, String currentMethod) {
         // TODO: Simple implementation that needs to be expanded
 
         var kind = Kind.fromString(expr.getKind());
 
         Type type = switch (kind) {
             case BINARY_EXPR -> getBinExprType(expr);
-            case VAR_REF_EXPR -> getVarExprType(expr, table);
+            case IDENTIFIER -> getIdentifierType(expr, table, currentMethod);
             case INTEGER_LITERAL -> new Type(INT_TYPE_NAME, false);
-            case ARRAY_ACCESS_OP -> new Type(INT_TYPE_NAME, true);
+            case ARRAY_ACCESS_OP -> new Type(INT_TYPE_NAME, false);
             default -> throw new UnsupportedOperationException("Can't compute type for expression kind '" + kind + "'");
         };
 
@@ -48,9 +49,40 @@ public class TypeUtils {
     }
 
 
-    private static Type getVarExprType(JmmNode varRefExpr, SymbolTable table) {
-        // TODO: Simple implementation that needs to be expanded
-        return new Type(INT_TYPE_NAME, false);
+    private static Type getIdentifierType(JmmNode idExpr, SymbolTable table, String currentMethod) {
+        var id = idExpr.get("ID");
+
+        // Var is a field, return
+        if (table.getFields().stream()
+                .anyMatch(param -> param.getName().equals(id))) {
+            return table.getFields().stream()
+                    .filter(param -> param.getName().equals(id))
+                    .findFirst()
+                    .get()
+                    .getType();
+        }
+
+        // Var is a parameter, return
+        if (table.getParameters(currentMethod).stream()
+                .anyMatch(param -> param.getName().equals(id))) {
+            return table.getParameters(currentMethod).stream()
+                    .filter(param -> param.getName().equals(id))
+                    .findFirst()
+                    .get()
+                    .getType();
+        }
+
+        // Var is a declared variable, return
+        if (table.getLocalVariables(currentMethod).stream()
+                .anyMatch(varDecl -> varDecl.getName().equals(id))) {
+            return table.getLocalVariables(currentMethod).stream()
+                    .filter(varDecl -> varDecl.getName().equals(id))
+                    .findFirst()
+                    .get()
+                    .getType();
+        }
+
+        throw new RuntimeException("Variable '" + id + "' does not exist.");
     }
 
     /**

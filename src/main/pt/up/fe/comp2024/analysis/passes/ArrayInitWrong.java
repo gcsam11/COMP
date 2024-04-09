@@ -11,9 +11,9 @@ import pt.up.fe.comp2024.ast.NodeUtils;
 import pt.up.fe.comp2024.ast.TypeUtils;
 
 /**
- * Checks if the accessed array exists.
+ * Checks if the array initialization is correct.
  */
-public class ArrayAccessOnInt extends AnalysisVisitor {
+public class ArrayInitWrong extends AnalysisVisitor {
 
     private String currentMethod;
     @Override
@@ -29,20 +29,20 @@ public class ArrayAccessOnInt extends AnalysisVisitor {
 
     private Void visitArrayAccessOp(JmmNode arrayAccessOp, SymbolTable table) {
 
-        var arrayIdExpr = arrayAccessOp.getChild(0);
+        var arrayIdExpr = arrayAccessOp.getChild(1);
 
         Type type = TypeUtils.getExprType(arrayIdExpr, table, currentMethod);
 
-        if (type.isArray()){
+        if (type.getName().equals(TypeUtils.getIntTypeName())){
             return null;
         }
 
         // Create error report
-        var message = String.format("'%s' is not an array.", arrayIdExpr.get("ID"));
+        var message = String.format("'%s' array access index is not an INT.", arrayAccessOp.getChild(0).get("ID"));
         addReport(Report.newError(
                 Stage.SEMANTIC,
-                NodeUtils.getLine(arrayIdExpr),
-                NodeUtils.getColumn(arrayIdExpr),
+                NodeUtils.getLine(arrayAccessOp),
+                NodeUtils.getColumn(arrayAccessOp),
                 message,
                 null)
         );

@@ -25,7 +25,7 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
 
     @Override
     protected void buildVisitor() {
-        addVisit(VAR_REF_EXPR, this::visitVarRef);
+        addVisit(IDENTIFIER, this::visitVarRef);
         addVisit(BINARY_EXPR, this::visitBinExpr);
         addVisit(INTEGER_LITERAL, this::visitInteger);
 
@@ -53,7 +53,7 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
         computation.append(rhs.getComputation());
 
         // code to compute self
-        Type resType = TypeUtils.getExprType(node, table);
+        Type resType = TypeUtils.getExprType(node, table, "");
         String resOllirType = OptUtils.toOllirType(resType);
         String code = OptUtils.getTemp() + resOllirType;
 
@@ -61,7 +61,7 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
                 .append(ASSIGN).append(resOllirType).append(SPACE)
                 .append(lhs.getCode()).append(SPACE);
 
-        Type type = TypeUtils.getExprType(node, table);
+        Type type = TypeUtils.getExprType(node, table, "");
         computation.append(node.get("op")).append(OptUtils.toOllirType(type)).append(SPACE)
                 .append(rhs.getCode()).append(END_STMT);
 
@@ -72,7 +72,7 @@ public class OllirExprGeneratorVisitor extends PreorderJmmVisitor<Void, OllirExp
     private OllirExprResult visitVarRef(JmmNode node, Void unused) {
 
         var id = node.get("name");
-        Type type = TypeUtils.getExprType(node, table);
+        Type type = TypeUtils.getExprType(node, table, "");
         String ollirType = OptUtils.toOllirType(type);
 
         String code = id + ollirType;

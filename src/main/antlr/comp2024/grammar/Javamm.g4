@@ -113,7 +113,7 @@ expr
     | value+=ID #Identifier
     | value+=THIS #This
     | value+=NULL #Null
-    | value+=INTEGER #Integer
+    | value+=INTEGER #Integer_Literal
     ;
 
 anIntArray

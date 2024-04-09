@@ -59,7 +59,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         // code to compute self
         // statement has type of lhs
-        Type thisType = TypeUtils.getExprType(node.getJmmChild(0), table);
+        Type thisType = TypeUtils.getExprType(node.getJmmChild(0), table, "");
         String typeString = OptUtils.toOllirType(thisType);
 
 
