@@ -21,7 +21,7 @@ public enum Kind {
     IMPORT_DECL,
     VAR_REF_EXPR,
     RETURN,
-    INT_TYPE;
+    IDENTIFIER;
 
 
     private static final Set<Kind> STATEMENTS = Set.of(ASSIGN_STMT, RETURN_STMT);
