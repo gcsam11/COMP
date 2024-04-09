@@ -19,7 +19,6 @@ public class ArrayAccessOnInt extends AnalysisVisitor {
     public void buildVisitor() {
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
         addVisit(Kind.RETURN, this::visitReturnExpr);
-        addVisit(Kind.VAR_REF_EXPR, this::visitVarRefExpr);
     }
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
@@ -55,22 +54,6 @@ public class ArrayAccessOnInt extends AnalysisVisitor {
                 Stage.SEMANTIC,
                 NodeUtils.getLine(varReturnExpress),
                 NodeUtils.getColumn(varReturnExpress),
-                message,
-                null)
-        );
-
-        return null;
-    }
-
-    private Void visitVarRefExpr(JmmNode varRefExpr, SymbolTable table) {
-        SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
-
-        // Create error report
-        var message = String.format("Variable '%s' does not exist.", varRefName);
-        addReport(Report.newError(
-                Stage.SEMANTIC,
-                NodeUtils.getLine(varRefExpr),
-                NodeUtils.getColumn(varRefExpr),
                 message,
                 null)
         );
