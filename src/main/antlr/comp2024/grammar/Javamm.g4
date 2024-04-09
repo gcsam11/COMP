@@ -97,7 +97,8 @@ stmt
     | RETURN expr SEMI #Return
     ;
 expr
-    : expr (op+=DOT func=LENGTH | op+=DOT value+=ID LPAREN ( expr ( COMMA expr )* )? RPAREN | LSQUARE expr RSQUARE) #MemberOrArrayAccessOp
+    : expr (op+=DOT func=LENGTH | op+=DOT value+=ID LPAREN ( expr ( COMMA expr )* )? RPAREN) #MemberAccessOp
+    | expr (LSQUARE expr RSQUARE) #ArrayAccessOp
     | op+=LPAREN expr RPAREN #ParenOp
     | op+=NEG expr #UnaryOp
     | (op+=NEW value+=INT LSQUARE expr RSQUARE | op+=NEW value+=ID LPAREN RPAREN) #NewOp

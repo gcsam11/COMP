@@ -28,28 +28,10 @@ public class ArrayAccessOnInt extends AnalysisVisitor {
 
     private Void visitReturnExpr(JmmNode varReturnExpress, SymbolTable table) {
 
-        var returnStmtVar = varReturnExpress.getChildren().get(0).get("ID");
-
-        // Var is a field, return
-        if (table.getFields().stream()
-                .anyMatch(param -> param.getName().equals(returnStmtVar))) {
-            return null;
-        }
-
-        // Var is a parameter, return
-        if (table.getParameters(currentMethod).stream()
-                .anyMatch(param -> param.getName().equals(returnStmtVar))) {
-            return null;
-        }
-
-        // Var is a declared variable, return
-        if (table.getLocalVariables(currentMethod).stream()
-                .anyMatch(varDecl -> varDecl.getName().equals(returnStmtVar))) {
-            return null;
-        }
+        var isReturnTypeArray = varReturnExpress.getChild(0).get("isArray");
 
         // Create error report
-        var message = String.format("Variable '%s' does not exist.", returnStmtVar);
+        var message = String.format("Variable '%s' does not exist.", isReturnTypeArray);
         addReport(Report.newError(
                 Stage.SEMANTIC,
                 NodeUtils.getLine(varReturnExpress),
