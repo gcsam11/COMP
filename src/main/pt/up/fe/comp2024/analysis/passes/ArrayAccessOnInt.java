@@ -10,11 +10,9 @@ import pt.up.fe.comp2024.ast.NodeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 
 /**
- * Checks if the type of the expression in a return statement is compatible with the method return type.
- *
- * @author JBispo
+ * Checks if the accessed array exists.
  */
-public class UndeclaredVariable extends AnalysisVisitor {
+public class ArrayAccessOnInt extends AnalysisVisitor {
 
     private String currentMethod;
     @Override
@@ -22,8 +20,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
         addVisit(Kind.RETURN, this::visitReturnExpr);
         addVisit(Kind.VAR_REF_EXPR, this::visitVarRefExpr);
-        // Add when try to send as parameter to other function case
-        // Add when try to use in expression
     }
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
@@ -68,27 +64,6 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
     private Void visitVarRefExpr(JmmNode varRefExpr, SymbolTable table) {
         SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
-
-        // Check if exists a parameter or variable declaration with the same name as the variable reference
-        var varRefName = varRefExpr.get("name");
-
-        // Var is a field, return
-        if (table.getFields().stream()
-                .anyMatch(param -> param.getName().equals(varRefName))) {
-            return null;
-        }
-
-        // Var is a parameter, return
-        if (table.getParameters(currentMethod).stream()
-                .anyMatch(param -> param.getName().equals(varRefName))) {
-            return null;
-        }
-
-        // Var is a declared variable, return
-        if (table.getLocalVariables(currentMethod).stream()
-                .anyMatch(varDecl -> varDecl.getName().equals(varRefName))) {
-            return null;
-        }
 
         // Create error report
         var message = String.format("Variable '%s' does not exist.", varRefName);
