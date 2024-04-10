@@ -9,6 +9,7 @@ import pt.up.fe.comp2024.analysis.AnalysisVisitor;
 import pt.up.fe.comp2024.ast.Kind;
 import pt.up.fe.comp2024.ast.NodeUtils;
 import pt.up.fe.comp2024.ast.TypeUtils;
+import pt.up.fe.specs.util.SpecsCheck;
 
 /**
  * Checks if the accessed array exists.
@@ -28,6 +29,7 @@ public class ArrayAccessOnInt extends AnalysisVisitor {
     }
 
     private Void visitArrayAccessOp(JmmNode arrayAccessOp, SymbolTable table) {
+        SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
 
         var arrayIdExpr = arrayAccessOp.getChild(0);
 
@@ -38,7 +40,7 @@ public class ArrayAccessOnInt extends AnalysisVisitor {
         }
 
         // Create error report
-        var message = String.format("'%s' is not an array.", arrayIdExpr.get("ID"));
+        var message = String.format("'%s' is not an array.", arrayIdExpr.get("value"));
         addReport(Report.newError(
                 Stage.SEMANTIC,
                 NodeUtils.getLine(arrayIdExpr),

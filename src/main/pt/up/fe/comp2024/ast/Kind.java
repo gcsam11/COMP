@@ -13,15 +13,19 @@ public enum Kind {
     TYPE,
     METHOD_DECL,
     MAIN_DECL,
-    PARAM,
+    PARAM_DECL,
     ASSIGN_STMT,
     RETURN_STMT,
     BINARY_EXPR,
+    BOOLEAN_LITERAL,
     INTEGER_LITERAL,
     IMPORT_DECL,
-    RETURN,
     IDENTIFIER,
-    ARRAY_ACCESS_OP;
+    ARRAY_ACCESS_OP,
+    ARRAY_CREATION_OP,
+    WHILE_STMT,
+    IF_ELSE_STMT,
+    NEW_OP;
 
 
     private static final Set<Kind> STATEMENTS = Set.of(ASSIGN_STMT, RETURN_STMT);

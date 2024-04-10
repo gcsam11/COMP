@@ -88,32 +88,32 @@ type locals [boolean isArray=false]
     ;
 
 stmt
-    : LCURLY ( stmt )* RCURLY #Block
-    | IF LPAREN expr RPAREN stmt ELSE stmt #IfElse
-    | WHILE LPAREN expr RPAREN stmt #While
+    : LCURLY ( stmt )* RCURLY #BlockStmt
+    | IF LPAREN expr RPAREN stmt ELSE stmt #IfElseStmt
+    | WHILE LPAREN expr RPAREN stmt #WhileStmt
     | expr SEMI #ExprStmt
-    | var=ID EQUALS expr SEMI #Assign
-    | var=ID LSQUARE expr RSQUARE EQUALS expr SEMI #ArrayAssign
-    | RETURN expr SEMI #Return
+    | expr EQUALS expr SEMI #AssignStmt
+    | expr LSQUARE expr RSQUARE EQUALS expr SEMI #ArrayAssign
+    | RETURN expr SEMI #ReturnStmt
     ;
 expr
-    : expr (op+=DOT func=LENGTH | op+=DOT value+=ID LPAREN ( expr ( COMMA expr )* )? RPAREN) #MemberAccessOp
+    : expr (op=DOT func=LENGTH | op=DOT value=ID LPAREN ( expr ( COMMA expr )* )? RPAREN) #MemberAccessOp
     | expr (LSQUARE expr RSQUARE) #ArrayAccessOp
-    | op+=LPAREN expr RPAREN #ParenOp
-    | op+=NEG expr #UnaryOp
-    | (op+=NEW value+=INT LSQUARE expr RSQUARE | op+=NEW value+=ID LPAREN RPAREN) #NewOp
-    | expr op+=(MUL | DIV) expr #BinaryOp
-    | expr op+=(ADD | SUB) expr #BinaryOp
-    | expr op+=LT expr #BinaryOp
-    | expr op+=AND expr #BinaryOp
-    | LSQUARE ( expr ( COMMA expr )* )? RSQUARE #ArrayCreation
-    | value+=INT #Int
-    | value+=TRUE #True
-    | value+=FALSE #False
-    | value+=ID #Identifier
-    | value+=THIS #This
-    | value+=NULL #Null
-    | value+=INTEGER #Integer_Literal
+    | op=LPAREN expr RPAREN #ParenOp
+    | op=NEG expr #UnaryOp
+    | (op=NEW value=INT LSQUARE expr RSQUARE | op=NEW value=ID LPAREN RPAREN) #NewOp
+    | expr op=(MUL | DIV) expr #BinaryExpr
+    | expr op=(ADD | SUB) expr #BinaryExpr
+    | expr op=LT expr #BinaryExpr
+    | expr op=AND expr #BinaryExpr
+    | LSQUARE ( expr ( COMMA expr )* )? RSQUARE #ArrayCreationOp
+    | value=INT #Int
+    | value=TRUE #BooleanLiteral
+    | value=FALSE #BooleanLiteral
+    | value=ID #Identifier
+    | value=THIS #This
+    | value=NULL #Null
+    | value=INTEGER #IntegerLiteral
     ;
 
 anIntArray

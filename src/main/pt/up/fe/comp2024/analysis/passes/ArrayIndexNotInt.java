@@ -9,6 +9,7 @@ import pt.up.fe.comp2024.analysis.AnalysisVisitor;
 import pt.up.fe.comp2024.ast.Kind;
 import pt.up.fe.comp2024.ast.NodeUtils;
 import pt.up.fe.comp2024.ast.TypeUtils;
+import pt.up.fe.specs.util.SpecsCheck;
 
 /**
  * Checks if the index of the array access is an int.
@@ -28,17 +29,18 @@ public class ArrayIndexNotInt extends AnalysisVisitor {
     }
 
     private Void visitArrayAccessOp(JmmNode arrayAccessOp, SymbolTable table) {
+        SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
 
         var arrayIdExpr = arrayAccessOp.getChild(1);
 
-        Type type = TypeUtils.getExprType(arrayIdExpr, table, currentMethod);
+        Type type = TypeUtils.getExprType(arrayIdExpr, table, currentMethod); // TODO - arrayIdExpr could be an INT or a BINARY_EXPR
 
         if (type.getName().equals(TypeUtils.getIntTypeName())){
             return null;
         }
 
         // Create error report
-        var message = String.format("'%s' array access index is not an INT.", arrayAccessOp.getChild(0).get("ID"));
+        var message = String.format("'%s' array access index is not an INT.", arrayAccessOp.getChild(0).get("value"));
         addReport(Report.newError(
                 Stage.SEMANTIC,
                 NodeUtils.getLine(arrayAccessOp),

@@ -53,7 +53,7 @@ public class JmmSymbolTableBuilder {
     }
 
     public static List<Symbol> getMethodDeclParams(JmmNode methodDecl) {
-            return methodDecl.getChildren(Kind.PARAM).stream()
+            return methodDecl.getChildren(Kind.PARAM_DECL).stream()
                     .map(param -> new Symbol(new Type(param.getChild(0).get("typeName"), Boolean.parseBoolean(param.getChild(0).get("isArray"))), param.get("var")))
                     .toList();
     }
