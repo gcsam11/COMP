@@ -35,8 +35,6 @@ public class WrongInit extends AnalysisVisitor {
             Type idType = TypeUtils.getExprType(arrayAssignStmt.getChild(0), table, currentMethod);
             Type assignType = TypeUtils.getExprType(arrayAssignStmt.getChild(1), table, currentMethod);
 
-            System.out.println(assignType);
-
             if(!idType.isArray()){
                 if(assignType.isArray()){
                     var message = String.format("Assigning array to non array variable '%s'", arrayAssignStmt.getChild(0).get("value"));

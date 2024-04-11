@@ -5,18 +5,17 @@ import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.JmmNode;
 import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.comp.jmm.report.Stage;
+import java.util.Objects;
 
 public class TypeUtils {
 
     private static final String INT_TYPE_NAME = "int";
     private static final String BOOLEAN_TYPE_NAME = "boolean";
-    private static final String OBJECT_TYPE_NAME = "object";
 
     public static String getIntTypeName() {
         return INT_TYPE_NAME;
     }
     public static String getBooleanTypeName() { return BOOLEAN_TYPE_NAME; }
-    public static String getObjectType() { return OBJECT_TYPE_NAME; }
 
     /**
      * Gets the {@link Type} of an arbitrary expression.
@@ -39,6 +38,7 @@ public class TypeUtils {
             case ARRAY_ACCESS_OP -> new Type(INT_TYPE_NAME, false);
             case ARRAY_CREATION_OP -> getArrayType(expr, table, currentMethod);
             case NEW_OP -> getNewOpType(expr, table, currentMethod);
+            case MEMBER_ACCESS_OP -> getMemberAccessType(expr, table, currentMethod);
             default -> throw new UnsupportedOperationException("Can't compute type for expression kind '" + kind + "'");
         };
 
@@ -59,6 +59,11 @@ public class TypeUtils {
 
     private static Type getIdentifierType(JmmNode idExpr, SymbolTable table, String currentMethod) {
         var id = idExpr.get("value");
+
+        if(table.getImports().stream()
+                .anyMatch(importDecl -> importDecl.equals(id))) {
+            return new Type(id, false);
+        }
 
         // Var is a field, return
         if (table.getFields().stream()
@@ -113,10 +118,20 @@ public class TypeUtils {
     private static Type getNewOpType(JmmNode newOp, SymbolTable table, String currentMethod) {
         // Check if there exists a child
         if (newOp.getNumChildren() == 0) {
-            return new Type(OBJECT_TYPE_NAME, false);
+            return new Type(newOp.get("value"), false);
         }
 
         return new Type(INT_TYPE_NAME, true);
+    }
+
+    private static Type getMemberAccessType(JmmNode memberAccess, SymbolTable table, String currentMethod){
+        var methodExists = table.getMethods().contains(memberAccess.get("value"));
+        if (methodExists) { // If the method is declared then method does not come from an import or super class
+            return table.getReturnType(memberAccess.get("value"));
+        }
+        else {
+            return getExprType(memberAccess.getChild(0), table, currentMethod);
+        }
     }
 
     /**

@@ -25,7 +25,9 @@ public class JmmAnalysisImpl implements JmmAnalysis {
                 new ArrayIndexNotInt(),
                 new WrongInit(),
                 new ConditionsWithoutBooleans(),
-                new WrongOpTypes());
+                new WrongOpTypes(),
+                new ImportDeclAndMemberAccess(),
+                new ReturnTypes());
     }
 
     @Override
