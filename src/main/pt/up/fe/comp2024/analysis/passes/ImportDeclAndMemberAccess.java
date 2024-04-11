@@ -89,14 +89,7 @@ public class ImportDeclAndMemberAccess extends AnalysisVisitor {
             }
 
         } catch (RuntimeException e) {
-            var message = String.format("Accessing member of an expression that is not a class.");
-            addReport(Report.newError(
-                    Stage.SEMANTIC,
-                    NodeUtils.getLine(memberAccess),
-                    NodeUtils.getColumn(memberAccess),
-                    message,
-                    null)
-            );
+            // Do Nothing
         }
         return null;
     }

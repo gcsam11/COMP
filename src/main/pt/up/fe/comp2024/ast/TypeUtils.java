@@ -95,7 +95,7 @@ public class TypeUtils {
                     .getType();
         }
 
-        throw new RuntimeException("Variable '" + id + "' does not exist.");
+        throw new RuntimeException("Undeclared symbol '" + id + ".");
     }
 
     private static Type getArrayType(JmmNode arrayCreationOp, SymbolTable table, String currentMethod) {

@@ -15,7 +15,7 @@ import pt.up.fe.specs.util.SpecsCheck;
  *
  * @author JBispo
  */
-public class UndeclaredVariable extends AnalysisVisitor {
+public class UndeclaredSymbol extends AnalysisVisitor {
 
     private String currentMethod;
     @Override
@@ -40,7 +40,7 @@ public class UndeclaredVariable extends AnalysisVisitor {
 
         } catch (RuntimeException e) {
             // Create error report
-            var message = String.format("Variable '%s' does not exist.", varRefName);
+            var message = String.format(e.getMessage());
             addReport(Report.newError(
                     Stage.SEMANTIC,
                     NodeUtils.getLine(identifier),

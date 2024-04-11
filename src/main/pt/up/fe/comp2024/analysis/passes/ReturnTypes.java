@@ -31,18 +31,25 @@ public class ReturnTypes extends AnalysisVisitor {
     }
 
     private Void visitReturnStmt(JmmNode returnStmt, SymbolTable table){
-        var returnType = TypeUtils.getExprType(returnStmt.getChild(0), table, currentMethod);
-        var methodReturnType = table.getReturnType(currentMethod);
-        if(!Objects.equals(returnType, methodReturnType)){
-            var message = String.format("Return type of '%s' does not match '%s' method's type", returnStmt.getChild(0).get("value"), currentMethod);
-            addReport(Report.newError(
-                    Stage.SEMANTIC,
-                    NodeUtils.getLine(returnStmt),
-                    NodeUtils.getColumn(returnStmt),
-                    message,
-                    null)
-            );
+        try{
+            var returnType = TypeUtils.getExprType(returnStmt.getChild(0), table, currentMethod);
+            var methodReturnType = table.getReturnType(currentMethod);
+            if(!Objects.equals(returnType, methodReturnType)
+                    && !table.getImports().contains(returnType.getName())
+                    && (!table.getImports().contains(table.getSuper()) && !Objects.equals(returnType.getName(), table.getClassName()))){
+                var message = String.format("Return type of '%s' does not match '%s' method's type", returnStmt.getChild(0).get("value"), currentMethod);
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(returnStmt),
+                        NodeUtils.getColumn(returnStmt),
+                        message,
+                        null)
+                );
+            }
+        } catch (RuntimeException e) {
+            // Do Nothing
         }
+
         return null;
     }
 
