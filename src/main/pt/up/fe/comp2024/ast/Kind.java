@@ -26,7 +26,9 @@ public enum Kind {
     WHILE_STMT,
     IF_ELSE_STMT,
     NEW_OP,
-    MEMBER_ACCESS_OP;
+    MEMBER_ACCESS_OP,
+    INT_ELLIPSIS_TYPE,
+    THIS;
 
     private static final Set<Kind> STATEMENTS = Set.of(ASSIGN_STMT, RETURN_STMT);
     private static final Set<Kind> EXPRESSIONS = Set.of(BINARY_EXPR, INTEGER_LITERAL, IDENTIFIER);

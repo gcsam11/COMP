@@ -39,6 +39,7 @@ public class TypeUtils {
             case ARRAY_CREATION_OP -> getArrayType(expr, table, currentMethod);
             case NEW_OP -> getNewOpType(expr, table, currentMethod);
             case MEMBER_ACCESS_OP -> getMemberAccessType(expr, table, currentMethod);
+            case THIS -> new Type(table.getClassName(), false);
             default -> throw new UnsupportedOperationException("Can't compute type for expression kind '" + kind + "'");
         };
 
@@ -60,6 +61,7 @@ public class TypeUtils {
     private static Type getIdentifierType(JmmNode idExpr, SymbolTable table, String currentMethod) {
         var id = idExpr.get("value");
 
+        // Var is an import, return
         if(table.getImports().stream()
                 .anyMatch(importDecl -> importDecl.equals(id))) {
             return new Type(id, false);
@@ -95,7 +97,7 @@ public class TypeUtils {
                     .getType();
         }
 
-        throw new RuntimeException("Undeclared symbol '" + id + ".");
+        throw new RuntimeException("Undeclared symbol '" + id + "'.");
     }
 
     private static Type getArrayType(JmmNode arrayCreationOp, SymbolTable table, String currentMethod) {

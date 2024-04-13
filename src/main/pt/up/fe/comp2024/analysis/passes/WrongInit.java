@@ -10,6 +10,9 @@ import pt.up.fe.comp2024.ast.Kind;
 import pt.up.fe.comp2024.ast.NodeUtils;
 import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
+import pt.up.fe.specs.util.threadstream.ObjectStream;
+
+import java.util.Objects;
 
 /**
  * Checks if an assignment is correct.
@@ -28,67 +31,30 @@ public class WrongInit extends AnalysisVisitor {
         return null;
     }
 
-    private Void visitAssignStmt(JmmNode arrayAssignStmt, SymbolTable table) {
+    private Void visitAssignStmt(JmmNode assignStmt, SymbolTable table) {
         SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
 
         try {
-            Type idType = TypeUtils.getExprType(arrayAssignStmt.getChild(0), table, currentMethod);
-            Type assignType = TypeUtils.getExprType(arrayAssignStmt.getChild(1), table, currentMethod);
+            Type idType = TypeUtils.getExprType(assignStmt.getChild(0), table, currentMethod);
+            Type assignType = TypeUtils.getExprType(assignStmt.getChild(1), table, currentMethod);
 
-            if(!idType.isArray()){
-                if(assignType.isArray()){
-                    var message = String.format("Assigning array to non array variable '%s'", arrayAssignStmt.getChild(0).get("value"));
-                    addReport(Report.newError(
-                            Stage.SEMANTIC,
-                            NodeUtils.getLine(arrayAssignStmt),
-                            NodeUtils.getColumn(arrayAssignStmt),
-                            message,
-                            null)
-                    );
-
-                    return null;
-                }
-                if(idType.getName().equals(assignType.getName())) {
-                    return null;
-                }
-                var message = String.format("Assigning '%s' to '%s'.", assignType.getName(), idType.getName());
+            if(!checkImportsAndExtensions(idType, assignType, table, assignStmt)){
+                var message = String.format("'%s' can not be assigned to '%s'", assignType, idType);
                 addReport(Report.newError(
                         Stage.SEMANTIC,
-                        NodeUtils.getLine(arrayAssignStmt),
-                        NodeUtils.getColumn(arrayAssignStmt),
+                        NodeUtils.getLine(assignStmt),
+                        NodeUtils.getColumn(assignStmt),
                         message,
                         null)
                 );
             }
-            else{
-                if(!assignType.isArray()){
-                    var message = String.format("Assigning non array to array variable '%s'", arrayAssignStmt.getChild(0).get("value"));
-                    addReport(Report.newError(
-                            Stage.SEMANTIC,
-                            NodeUtils.getLine(arrayAssignStmt),
-                            NodeUtils.getColumn(arrayAssignStmt),
-                            message,
-                            null)
-                    );
-                }
-                if(idType.getName().equals(assignType.getName())) {
-                    return null;
-                }
-                var message = String.format("Assigning '%s' to '%s'.", assignType.getName(), idType.getName());
-                addReport(Report.newError(
-                        Stage.SEMANTIC,
-                        NodeUtils.getLine(arrayAssignStmt),
-                        NodeUtils.getColumn(arrayAssignStmt),
-                        message,
-                        null)
-                );
-            }
+
         } catch (RuntimeException e) {
             var message = String.format("'%s'", e.getMessage());
             addReport(Report.newError(
                     Stage.SEMANTIC,
-                    NodeUtils.getLine(arrayAssignStmt),
-                    NodeUtils.getColumn(arrayAssignStmt),
+                    NodeUtils.getLine(assignStmt),
+                    NodeUtils.getColumn(assignStmt),
                     message,
                     null)
             );
@@ -96,4 +62,36 @@ public class WrongInit extends AnalysisVisitor {
 
         return null;
     }
+
+    private Boolean checkImportsAndExtensions(Type idType, Type assignType, SymbolTable table, JmmNode assignStmt) {
+        if(Objects.equals(idType, assignType) &&
+                (checkIfTypeIsPrimitive(idType)
+                        || checkIfTypeIsImported(idType, table)
+                        || table.getClassName().equals(idType.getName()))){
+            return true;
+        }
+        else {
+            if(checkIfTypeIsImported(idType, table) && checkIfTypeIsImported(assignType, table)){
+                return true;
+            }
+            else if(checkIfTypeIsExtension(idType, table) && table.getClassName().equals(assignType.getName())){
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private Boolean checkIfTypeIsPrimitive(Type type){
+        return (TypeUtils.getIntTypeName().equals(type.getName()) || TypeUtils.getBooleanTypeName().equals(type.getName()));
+    }
+
+    private Boolean checkIfTypeIsImported(Type type, SymbolTable table){
+        return table.getImports().contains(type.getName());
+    }
+
+    private Boolean checkIfTypeIsExtension(Type type, SymbolTable table){
+        return table.getImports().contains(table.getSuper()) && Objects.equals(table.getSuper(), type.getName());
+    }
 }
+

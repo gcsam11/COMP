@@ -75,9 +75,9 @@ param
     : type var=ID #ParamDecl
     ;
 
-type locals [boolean isArray=false]
+type locals [boolean isArray=false, boolean isVarargs=false]
     : typeName=INT LSQUARE RSQUARE {$isArray=true;} #IntArrayType
-    | typeName=INT ELLIPSIS #IntEllipsisType
+    | typeName=INT ELLIPSIS {$isVarargs=true;} #IntEllipsisType
     | typeName=BOOLEAN #BooleanType
     | typeName=INT #IntType
     | typeName=STRING #StringType

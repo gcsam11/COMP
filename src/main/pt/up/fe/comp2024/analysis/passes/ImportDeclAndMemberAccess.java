@@ -9,10 +9,9 @@ import pt.up.fe.comp2024.ast.Kind;
 import pt.up.fe.comp2024.ast.NodeUtils;
 import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
-import java.util.Objects;
 
 /**
- * Checks if a member access is correct and all the imported classes logistic.
+ * Checks if a member access is correct, all the imported classes logistic.
  */
 public class ImportDeclAndMemberAccess extends AnalysisVisitor {
 
@@ -25,6 +24,7 @@ public class ImportDeclAndMemberAccess extends AnalysisVisitor {
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
         currentMethod = method.get("name");
+
         return null;
     }
 
@@ -67,25 +67,6 @@ public class ImportDeclAndMemberAccess extends AnalysisVisitor {
                 );
 
                 return null;
-            }
-
-            if(memberAccess.getChildren().size() > 1) { // member has arguments
-                int i = 1;
-                for( JmmNode arg: memberAccess.getChildren().subList(1, memberAccess.getChildren().size())) {
-                    var idType = TypeUtils.getExprType(arg, table, currentMethod);
-                    var argType = table.getParameters(methodName).get(i-1).getType();
-                    if (!Objects.equals(idType, argType)) {
-                        var message = String.format("Assigning '%s' to '%s' in method '%s' call.", idType, argType, methodName);
-                        addReport(Report.newError(
-                                Stage.SEMANTIC,
-                                NodeUtils.getLine(memberAccess),
-                                NodeUtils.getColumn(memberAccess),
-                                message,
-                                null)
-                        );
-                    }
-                    i++;
-                }
             }
 
         } catch (RuntimeException e) {
