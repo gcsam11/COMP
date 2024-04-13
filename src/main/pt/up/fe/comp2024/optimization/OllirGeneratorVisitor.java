@@ -38,7 +38,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit(PROGRAM, this::visitProgram);
         addVisit(CLASS_DECL, this::visitClass);
         addVisit(METHOD_DECL, this::visitMethodDecl);
-        addVisit(PARAM, this::visitParam);
+        addVisit(PARAM_DECL, this::visitParam);
         addVisit(RETURN_STMT, this::visitReturn);
         addVisit(ASSIGN_STMT, this::visitAssignStmt);
 
@@ -59,7 +59,7 @@ public class OllirGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         // code to compute self
         // statement has type of lhs
-        Type thisType = TypeUtils.getExprType(node.getJmmChild(0), table);
+        Type thisType = TypeUtils.getExprType(node.getJmmChild(0), table, "");
         String typeString = OptUtils.toOllirType(thisType);
 
 

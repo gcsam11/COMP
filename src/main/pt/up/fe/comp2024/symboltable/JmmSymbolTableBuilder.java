@@ -4,7 +4,6 @@ import pt.up.fe.comp.jmm.analysis.table.Symbol;
 import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.JmmNode;
 import pt.up.fe.comp2024.ast.Kind;
-import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 
 import java.util.*;
@@ -54,7 +53,7 @@ public class JmmSymbolTableBuilder {
     }
 
     public static List<Symbol> getMethodDeclParams(JmmNode methodDecl) {
-            return methodDecl.getChildren(Kind.PARAM).stream()
+            return methodDecl.getChildren(Kind.PARAM_DECL).stream()
                     .map(param -> new Symbol(new Type(param.getChild(0).get("typeName"), Boolean.parseBoolean(param.getChild(0).get("isArray"))), param.get("var")))
                     .toList();
     }
