@@ -127,9 +127,9 @@ public class TypeUtils {
     }
 
     private static Type getMemberAccessType(JmmNode memberAccess, SymbolTable table, String currentMethod){
-        var methodExists = table.getMethods().contains(memberAccess.get("value"));
+        var methodExists = table.getMethods().contains(memberAccess.get("func"));
         if (methodExists) { // If the method is declared then method does not come from an import or super class
-            return table.getReturnType(memberAccess.get("value"));
+            return table.getReturnType(memberAccess.get("func"));
         }
         else {
             return getExprType(memberAccess.getChild(0), table, currentMethod);

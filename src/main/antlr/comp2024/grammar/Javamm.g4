@@ -15,7 +15,7 @@ ADD : '+' ;
 SUB : '-';
 DIV : '/';
 DOT : '.';
-ELLIPSIS : '...';
+INT_ELLIPSIS : 'int...';
 LSQUARE : '[';
 RSQUARE : ']';
 COMMA : ',';
@@ -77,7 +77,7 @@ param
 
 type locals [boolean isArray=false, boolean isVarargs=false]
     : typeName=INT LSQUARE RSQUARE {$isArray=true;} #IntArrayType
-    | typeName=INT ELLIPSIS {$isVarargs=true;} #IntEllipsisType
+    | typeName=INT_ELLIPSIS {$isVarargs=true; $isArray=true;} #IntEllipsisType
     | typeName=BOOLEAN #BooleanType
     | typeName=INT #IntType
     | typeName=STRING #StringType
@@ -98,7 +98,7 @@ stmt
     ;
 expr
     : expr op=DOT LENGTH #LengthOp
-    | expr (op=DOT value=ID LPAREN ( expr ( COMMA expr )* )? RPAREN) #MemberAccessOp
+    | expr (op=DOT func=ID LPAREN ( expr ( COMMA expr )* )? RPAREN) #MemberAccessOp
     | expr (LSQUARE expr RSQUARE) #ArrayAccessOp
     | op=LPAREN expr RPAREN #ParenOp
     | op=NEG expr #UnaryOp

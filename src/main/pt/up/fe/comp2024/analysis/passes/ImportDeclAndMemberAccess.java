@@ -33,7 +33,7 @@ public class ImportDeclAndMemberAccess extends AnalysisVisitor {
 
         try{
             var methodType = TypeUtils.getExprType(memberAccess, table, currentMethod);
-            var methodName = memberAccess.get("value");
+            var methodName = memberAccess.get("func");
 
             if (!table.getImports().isEmpty()) { // There exists imported classes
                 if (table.getImports().contains(table.getSuper())) { // Super class is imported

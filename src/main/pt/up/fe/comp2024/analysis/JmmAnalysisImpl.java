@@ -27,7 +27,8 @@ public class JmmAnalysisImpl implements JmmAnalysis {
                 new ConditionsWithoutBooleans(),
                 new WrongOpTypes(),
                 new ImportDeclAndMemberAccess(),
-                new ReturnTypes());
+                new ReturnTypes(),
+                new MethodParams());
     }
 
     @Override
