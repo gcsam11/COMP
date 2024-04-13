@@ -28,8 +28,8 @@ public class MethodParams extends AnalysisVisitor {
 
         // Check if varargs is a parameter and if it is the last parameter
         var parameters = method.getChildren(Kind.PARAM_DECL);
-        if(parameters.stream().anyMatch(param -> param.getChild(0).hasAttribute("isVarargs"))){
-            var varargs = parameters.stream().filter(param -> param.getChild(0).hasAttribute("isVarargs")).findFirst().get();
+        if(parameters.stream().anyMatch(param -> Boolean.parseBoolean(param.getChild(0).get("isVarargs")))){
+            var varargs = parameters.stream().filter(param -> Boolean.parseBoolean(param.getChild(0).get("isVarargs"))).findFirst().get();
             if(parameters.indexOf(varargs) != parameters.size()-1){
                 var message = String.format("Varargs is not the last parameter in '%s' declaration", currentMethod);
                 addReport(Report.newError(
