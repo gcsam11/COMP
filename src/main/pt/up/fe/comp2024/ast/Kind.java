@@ -25,7 +25,8 @@ public enum Kind {
     ARRAY_CREATION_OP,
     WHILE_STMT,
     IF_ELSE_STMT,
-    NEW_OP,
+    NEW_OP_ARRAY,
+    NEW_OP_OBJECT,
     MEMBER_ACCESS_OP,
     INT_ELLIPSIS_TYPE,
     THIS;
