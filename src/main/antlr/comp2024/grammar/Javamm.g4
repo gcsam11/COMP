@@ -67,8 +67,8 @@ varDeclaration
     : type varName=ID SEMI #VarDecl
     ;
 
-methodDeclaration locals [boolean isPublic=false]
-    : (PUBLIC {$isPublic=true;})? (STATIC)? type name=ID LPAREN ( param ( COMMA param )* )? RPAREN LCURLY (varDeclaration)* ( stmt )* RCURLY #MethodDecl
+methodDeclaration locals [boolean isPublic=false, boolean isStatic=false]
+    : (PUBLIC {$isPublic=true;})? (STATIC {$isStatic=true;})? type name=ID LPAREN ( param ( COMMA param )* )? RPAREN LCURLY (varDeclaration)* ( stmt )* RCURLY #MethodDecl
     ;
 
 param

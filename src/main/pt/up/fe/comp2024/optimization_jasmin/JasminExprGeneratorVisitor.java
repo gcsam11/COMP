@@ -24,7 +24,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         addVisit("IntegerLiteral", this::visitIntegerLiteral);
         addVisit("Identifier", this::visitIdentifier);
         addVisit("BinaryExpr", this::visitBinaryExpr);
-        addVisit("NewOp", this::visitNewOp);
+        //addVisit("NewOpArray", this::visitNewOpArray);
+        addVisit("NewOpObject", this::visitNewOpObject);
     }
 
     private Void visitIntegerLiteral(JmmNode integerLiteral, StringBuilder code) {
@@ -51,8 +52,12 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
         // get the operation
         var op = switch (binaryExpr.get("op")) {
-            case "+" -> "iadd";
+            case "/" -> "idiv";
             case "*" -> "imul";
+            case "+" -> "iadd";
+            case "-" -> "isub";
+            case "<" -> "iflt"; // fazer manualmente, if i < 7 return 1 else return 0
+            case "&&" -> "iand";
             default -> throw new NotImplementedException(binaryExpr.get("op"));
         };
 
@@ -62,7 +67,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         return null;
     }
 
-    private Void visitNewOp(JmmNode newOp, StringBuilder code) {
+
+    private Void visitNewOpObject(JmmNode newOp, StringBuilder code) {
         code.append("new " + newOp.get("type") + NL);
         code.append("dup" + NL);
         code.append("invokespecial " + newOp.get("type") + "/<init>()V" + NL);
