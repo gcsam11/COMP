@@ -65,9 +65,7 @@ public class WrongInit extends AnalysisVisitor {
 
     private Boolean checkImportsAndExtensions(Type idType, Type assignType, SymbolTable table, JmmNode assignStmt) {
         if(Objects.equals(idType, assignType) &&
-                (checkIfTypeIsPrimitive(idType)
-                        || checkIfTypeIsImported(idType, table)
-                        || table.getClassName().equals(idType.getName()))){
+                (checkIfTypeIsPrimitive(idType) || checkIfTypeIsImported(idType, table) || table.getClassName().equals(idType.getName()))){
             return true;
         }
         else {

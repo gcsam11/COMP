@@ -22,8 +22,9 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         // Using strings to avoid compilation problems in projects that
         // might no longer have the equivalent enums in Kind class.
         addVisit("IntegerLiteral", this::visitIntegerLiteral);
-        addVisit("VarRefExpr", this::visitVarRefExpr);
+        addVisit("Identifier", this::visitIdentifier);
         addVisit("BinaryExpr", this::visitBinaryExpr);
+        addVisit("NewOp", this::visitNewOp);
     }
 
     private Void visitIntegerLiteral(JmmNode integerLiteral, StringBuilder code) {
@@ -31,8 +32,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         return null;
     }
 
-    private Void visitVarRefExpr(JmmNode varRefExpr, StringBuilder code) {
-        var name = varRefExpr.get("name");
+    private Void visitIdentifier(JmmNode idExpr, StringBuilder code) {
+        var name = idExpr.get("value");
 
         // get register
         var reg = currentRegisters.get(name);
@@ -58,6 +59,13 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         // apply operation
         code.append(op).append(NL);
 
+        return null;
+    }
+
+    private Void visitNewOp(JmmNode newOp, StringBuilder code) {
+        code.append("new " + newOp.get("type") + NL);
+        code.append("dup" + NL);
+        code.append("invokespecial " + newOp.get("type") + "/<init>()V" + NL);
         return null;
     }
 

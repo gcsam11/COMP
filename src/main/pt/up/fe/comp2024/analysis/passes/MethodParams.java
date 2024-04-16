@@ -82,7 +82,7 @@ public class MethodParams extends AnalysisVisitor {
                 var methodParam = methodParams.get(i);
                 var callParam = callParams.get(i);
                 var callParamType = TypeUtils.getExprType(callParam, table, currentMethod);
-                if(!Objects.equals(methodParam.getName(), callParamType.getName())){
+                if(!Objects.equals(methodParam.getType(), callParamType)){
                     return false;
                 }
             }

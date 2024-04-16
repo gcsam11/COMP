@@ -3,6 +3,7 @@ package pt.up.fe.comp2024.optimization_jasmin;
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.ast.AJmmVisitor;
 import pt.up.fe.comp.jmm.ast.JmmNode;
+import pt.up.fe.comp2024.ast.Kind;
 import pt.up.fe.specs.util.SpecsCheck;
 import pt.up.fe.specs.util.utilities.StringLines;
 
@@ -40,6 +41,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit("Program", this::visitProgram);
         addVisit("ClassDecl", this::visitClassDecl);
         addVisit("MethodDecl", this::visitMethodDecl);
+        addVisit("NewOp", this::visitNewOp);
         addVisit("AssignStmt", this::visitAssignStmt);
         addVisit("ReturnStmt", this::visitReturnStmt);
     }
@@ -48,7 +50,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
     private String visitProgram(JmmNode program, Void unused) {
 
         // Get class decl node
-        var classDecl = program.getChild(0);
+        var classDecl = program.getChildren(Kind.CLASS_DECL).get(0);
         SpecsCheck.checkArgument(classDecl.isInstance("ClassDecl"), () -> "Expected a node of type 'ClassDecl', but instead got '" + classDecl.getKind() + "'");
 
         return visit(classDecl);
@@ -98,8 +100,8 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         // initialize register map and set parameters
         currentRegisters = new HashMap<>();
-        for (var param : methodDecl.getChildren("Param")) {
-            currentRegisters.put(param.get("name"), nextRegister);
+        for (var param : methodDecl.getChildren("ParamDecl")) {
+            currentRegisters.put(param.get("var"), nextRegister);
             nextRegister++;
         }
 
@@ -137,6 +139,15 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         return code.toString();
     }
 
+    private String visitNewOp(JmmNode newOp, Void unused) {
+        var code = new StringBuilder();
+
+        var lhs = newOp.getChild(0);
+        SpecsCheck.checkArgument(lhs.isInstance("NewOp"), () -> "Expected a node of type 'NewOp', but instead got '" + lhs.getKind() + "'");
+
+        return code.toString();
+    }
+
     private String visitAssignStmt(JmmNode assignStmt, Void unused) {
         var code = new StringBuilder();
 
@@ -145,9 +156,9 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         // store value in top of the stack in destination
         var lhs = assignStmt.getChild(0);
-        SpecsCheck.checkArgument(lhs.isInstance("VarRefExpr"), () -> "Expected a node of type 'VarRefExpr', but instead got '" + lhs.getKind() + "'");
+        SpecsCheck.checkArgument(lhs.isInstance("Identifier"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
 
-        var destName = lhs.get("name");
+        var destName = lhs.get("value");
 
         // get register
         var reg = currentRegisters.get(destName);

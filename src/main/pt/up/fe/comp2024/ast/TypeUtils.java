@@ -37,7 +37,8 @@ public class TypeUtils {
             case BOOLEAN_LITERAL -> new Type(BOOLEAN_TYPE_NAME, false);
             case ARRAY_ACCESS_OP -> new Type(INT_TYPE_NAME, false);
             case ARRAY_CREATION_OP -> getArrayType(expr, table, currentMethod);
-            case NEW_OP -> getNewOpType(expr, table, currentMethod);
+            case NEW_OP_ARRAY -> getNewOpType(expr, table, currentMethod);
+            case NEW_OP_OBJECT -> getNewOpType(expr, table, currentMethod);
             case MEMBER_ACCESS_OP -> getMemberAccessType(expr, table, currentMethod);
             case THIS -> new Type(table.getClassName(), false);
             default -> throw new UnsupportedOperationException("Can't compute type for expression kind '" + kind + "'");
