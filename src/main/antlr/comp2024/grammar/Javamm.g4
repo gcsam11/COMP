@@ -5,13 +5,13 @@ grammar Javamm;
 }
 
 EQUALS : '=';
-SEMI : ';' ;
-LCURLY : '{' ;
-RCURLY : '}' ;
-LPAREN : '(' ;
-RPAREN : ')' ;
-MUL : '*' ;
-ADD : '+' ;
+SEMI : ';';
+LCURLY : '{';
+RCURLY : '}';
+LPAREN : '(';
+RPAREN : ')';
+MUL : '*';
+ADD : '+';
 SUB : '-';
 DIV : '/';
 DOT : '.';
@@ -41,7 +41,6 @@ VOID : 'void' ;
 STRING : 'String' ;
 IMPORT : 'import';
 EXTENDS : 'extends';
-LENGTH : 'length';
 
 INTEGER : '0' | [1-9][0-9]* ;
 ID : [a-zA-Z_$][a-zA-Z0-9_$]*;
@@ -96,8 +95,8 @@ stmt
     | RETURN expr SEMI #ReturnStmt
     ;
 expr
-    : expr op=DOT LENGTH #LengthOp
-    | expr (op=DOT func=ID LPAREN ( expr ( COMMA expr )* )? RPAREN) #MemberAccessOp
+    : expr op=DOT value=ID #LengthOp
+    | expr op=DOT func=ID LPAREN ( expr ( COMMA expr )* )? RPAREN #MemberAccessOp
     | expr (LSQUARE expr RSQUARE) #ArrayAccessOp
     | op=LPAREN expr RPAREN #ParenOp
     | op=NEG expr #UnaryOp

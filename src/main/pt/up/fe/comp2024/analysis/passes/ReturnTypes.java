@@ -27,6 +27,43 @@ public class ReturnTypes extends AnalysisVisitor {
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
         currentMethod = method.get("name");
+
+        if(Objects.equals(method.getChild(0).getKind(), Kind.VOID_TYPE.getNodeName())){
+            return null;
+        }
+
+        if(method.getDescendants(Kind.RETURN_STMT).isEmpty()){
+            var message = String.format("Method '%s' does not have a return statement", currentMethod);
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(method.getChildren().get(method.getChildren().size() - 1)),
+                    NodeUtils.getColumn(method.getChildren().get(method.getChildren().size() - 1)),
+                    message,
+                    null)
+            );
+        }
+
+        if(method.getDescendants(Kind.RETURN_STMT).size() > 1){
+            var message = String.format("Method '%s' has more than one return statement", currentMethod);
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(method.getChildren().get(method.getChildren().size() - 1)),
+                    NodeUtils.getColumn(method.getChildren().get(method.getChildren().size() - 1)),
+                    message,
+                    null)
+            );
+        }
+
+        if(!method.getChildren().get(method.getChildren().size() - 1).getKind().equals(Kind.RETURN_STMT.getNodeName())){
+            var message = String.format("Method '%s' does not end with a return statement", currentMethod);
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(method.getChildren().get(method.getChildren().size() - 1)),
+                    NodeUtils.getColumn(method.getChildren().get(method.getChildren().size() - 1)),
+                    message,
+                    null)
+            );
+        }
         return null;
     }
 

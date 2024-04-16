@@ -10,8 +10,8 @@ import pt.up.fe.comp2024.ast.Kind;
 import pt.up.fe.comp2024.ast.NodeUtils;
 import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
-import pt.up.fe.specs.util.threadstream.ObjectStream;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -24,9 +24,10 @@ public class WrongInit extends AnalysisVisitor {
     public void buildVisitor() {
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
         addVisit(Kind.ASSIGN_STMT, this::visitAssignStmt);
+        addVisit(Kind.LENGTH_OP, this::visitLengthOp);
     }
 
-    // check if method name is MAIN and it's declaration is correct
+    // check if method name is MAIN, and it's declaration is correct
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
         currentMethod = method.get("name");
 
@@ -78,6 +79,45 @@ public class WrongInit extends AnalysisVisitor {
         return null;
     }
 
+    private Void visitLengthOp(JmmNode lengthOp, SymbolTable table) {
+        if(!lengthOp.get("value").equals("length")){
+            var message = "Length Operator does not contain keyword 'length'";
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(lengthOp),
+                    NodeUtils.getColumn(lengthOp),
+                    message,
+                    null)
+            );
+        }
+
+        try {
+            Type exprType = TypeUtils.getExprType(lengthOp.getChild(0), table, currentMethod);
+
+            if(!exprType.isArray()){
+                var message = String.format("'%s' is not an array", exprType);
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(lengthOp),
+                        NodeUtils.getColumn(lengthOp.getChild(0)),
+                        message,
+                        null)
+                );
+            }
+        } catch (RuntimeException e) {
+            var message = String.format("'%s'", e.getMessage());
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(lengthOp),
+                    NodeUtils.getColumn(lengthOp),
+                    message,
+                    null)
+            );
+        }
+
+        return null;
+    }
+
     private Void visitAssignStmt(JmmNode assignStmt, SymbolTable table) {
         SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
 
@@ -111,6 +151,10 @@ public class WrongInit extends AnalysisVisitor {
     }
 
     private Boolean checkImportsAndExtensions(Type idType, Type assignType, SymbolTable table, JmmNode assignStmt) {
+        // check if the assign as a member access descendant, if it does assume the return type of the function is correct (Import checked in another file)
+        if(assignStmt.getChildren(Kind.MEMBER_ACCESS_OP).size() > 0){
+            return true;
+        }
         if(Objects.equals(idType, assignType) &&
                 (checkIfTypeIsPrimitive(idType) || checkIfTypeIsImported(idType, table) || table.getClassName().equals(idType.getName()))){
             return true;
@@ -120,9 +164,6 @@ public class WrongInit extends AnalysisVisitor {
                 return true;
             }
             else if(checkIfTypeIsExtension(idType, table) && table.getClassName().equals(assignType.getName())){
-                return true;
-            }
-            else if(checkIfTypeIsPrimitive(idType) && checkIfTypeIsImported(assignType, table)){
                 return true;
             }
         }

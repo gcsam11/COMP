@@ -28,7 +28,8 @@ public class JmmAnalysisImpl implements JmmAnalysis {
                 new WrongOpTypes(),
                 new ImportDeclAndMemberAccess(),
                 new ReturnTypes(),
-                new MethodParams());
+                new MethodParams(),
+                new StaticMethods());
     }
 
     @Override

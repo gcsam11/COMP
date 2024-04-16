@@ -1,6 +1,7 @@
 package pt.up.fe.comp2024.analysis.passes;
 
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
+import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.JmmNode;
 import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.comp.jmm.report.Stage;
@@ -24,7 +25,6 @@ public class ImportDeclAndMemberAccess extends AnalysisVisitor {
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
         currentMethod = method.get("name");
-
         return null;
     }
 
@@ -56,7 +56,7 @@ public class ImportDeclAndMemberAccess extends AnalysisVisitor {
                 return null;
             }
 
-            if(methodType.getName().equals(table.getClassName())){
+            else if(methodType.getName().equals(table.getClassName())){
                 var message = String.format("Call to undeclared method '%s'", methodName);
                 addReport(Report.newError(
                         Stage.SEMANTIC,
@@ -68,10 +68,23 @@ public class ImportDeclAndMemberAccess extends AnalysisVisitor {
 
                 return null;
             }
-
+            else if(table.getImports().isEmpty() && !checkIfTypeIsPrimitive(methodType)){
+                var message = String.format("'%s' is not imported.", methodType.getName());
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(memberAccess),
+                        NodeUtils.getColumn(memberAccess),
+                        message,
+                        null)
+                );
+            }
         } catch (RuntimeException e) {
             // Do Nothing
         }
         return null;
+    }
+
+    private Boolean checkIfTypeIsPrimitive(Type type){
+        return (TypeUtils.getIntTypeName().equals(type.getName()) || TypeUtils.getBooleanTypeName().equals(type.getName()));
     }
 }

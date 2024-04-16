@@ -35,7 +35,10 @@ public class WrongOpTypes extends AnalysisVisitor {
         Type leftType = TypeUtils.getExprType(binaryExpr.getChild(0), table, currentMethod);
         Type rightType = TypeUtils.getExprType(binaryExpr.getChild(1), table, currentMethod);
 
-        if(leftType.getName().equals(opType.getName()) && rightType.getName().equals(opType.getName()) && !leftType.isArray() && !rightType.isArray()){
+        if(binaryExpr.get("op").equals("<") && leftType.getName().equals(TypeUtils.getIntTypeName()) && rightType.getName().equals(leftType.getName()) && !leftType.isArray() && !rightType.isArray()){
+            return null;
+        }
+        else if(leftType.getName().equals(opType.getName()) && rightType.getName().equals(opType.getName()) && !leftType.isArray() && !rightType.isArray()){
             return null;
         }
         else{

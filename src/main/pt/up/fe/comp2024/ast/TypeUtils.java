@@ -3,9 +3,6 @@ package pt.up.fe.comp2024.ast;
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.JmmNode;
-import pt.up.fe.comp.jmm.report.Report;
-import pt.up.fe.comp.jmm.report.Stage;
-import java.util.Objects;
 
 public class TypeUtils {
 
@@ -19,6 +16,7 @@ public class TypeUtils {
     public static String getBooleanTypeName() { return BOOLEAN_TYPE_NAME; }
     public static String getStringTypeName() { return STRING_TYPE_NAME; }
     public static String getVoidTypeName(){ return VOID_TYPE_NAME; }
+    public static Type getIntArrayType() { return new Type(INT_TYPE_NAME, true); }
 
     /**
      * Gets the {@link Type} of an arbitrary expression.
@@ -45,6 +43,7 @@ public class TypeUtils {
             case NEW_OP_OBJECT -> getNewOpType(expr, table, currentMethod);
             case MEMBER_ACCESS_OP -> getMemberAccessType(expr, table, currentMethod);
             case THIS -> new Type(table.getClassName(), false);
+            case LENGTH_OP -> new Type(INT_TYPE_NAME, false);
             default -> throw new UnsupportedOperationException("Can't compute type for expression kind '" + kind + "'");
         };
 
