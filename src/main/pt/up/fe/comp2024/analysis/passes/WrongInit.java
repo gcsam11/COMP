@@ -26,8 +26,55 @@ public class WrongInit extends AnalysisVisitor {
         addVisit(Kind.ASSIGN_STMT, this::visitAssignStmt);
     }
 
+    // check if method name is MAIN and it's declaration is correct
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
         currentMethod = method.get("name");
+
+        if(currentMethod.equals("main")){
+            var parameters = method.getChildren(Kind.PARAM_DECL);
+            if(parameters.size() != 1){
+                var message = String.format("Main method should have 1 parameter, found %d", parameters.size());
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(method),
+                        NodeUtils.getColumn(method),
+                        message,
+                        null)
+                );
+            }
+            else {
+                if(method.getChildren(Kind.PARAM_DECL).get(0).getChildren(Kind.STRING_ARRAY_TYPE).size() != 1){
+                    var message = String.format("Main method parameter should be of type '%s[]', found '%s'", TypeUtils.getStringTypeName(), TypeUtils.getExprType(method.getChildren(Kind.PARAM_DECL).get(0), table, currentMethod));
+                    addReport(Report.newError(
+                            Stage.SEMANTIC,
+                            NodeUtils.getLine(method),
+                            NodeUtils.getColumn(method.getChildren(Kind.PARAM_DECL).get(0)),
+                            message,
+                            null)
+                    );
+                }
+            }
+            if(!Boolean.parseBoolean(method.get("isStatic"))){
+                var message = "Main method should be static";
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(method),
+                        NodeUtils.getColumn(method),
+                        message,
+                        null)
+                );
+            }
+            if(!Objects.equals(method.getChild(0).getKind(), Kind.VOID_TYPE.getNodeName())){
+                var message = String.format("Main method return type should be '%s'", TypeUtils.getVoidTypeName());
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(method),
+                        NodeUtils.getColumn(method.getChild(0)),
+                        message,
+                        null)
+                );
+            }
+        }
         return null;
     }
 
@@ -73,6 +120,9 @@ public class WrongInit extends AnalysisVisitor {
                 return true;
             }
             else if(checkIfTypeIsExtension(idType, table) && table.getClassName().equals(assignType.getName())){
+                return true;
+            }
+            else if(checkIfTypeIsPrimitive(idType) && checkIfTypeIsImported(assignType, table)){
                 return true;
             }
         }
