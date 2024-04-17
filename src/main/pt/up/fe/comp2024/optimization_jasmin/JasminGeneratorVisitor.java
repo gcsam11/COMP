@@ -3,11 +3,13 @@ package pt.up.fe.comp2024.optimization_jasmin;
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.ast.AJmmVisitor;
 import pt.up.fe.comp.jmm.ast.JmmNode;
+import pt.up.fe.comp2024.ast.Kind;
 import pt.up.fe.specs.util.SpecsCheck;
 import pt.up.fe.specs.util.utilities.StringLines;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
@@ -40,6 +42,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit("Program", this::visitProgram);
         addVisit("ClassDecl", this::visitClassDecl);
         addVisit("MethodDecl", this::visitMethodDecl);
+        addVisit("NewOpObject", this::visitNewOpObject);
         addVisit("AssignStmt", this::visitAssignStmt);
         addVisit("ReturnStmt", this::visitReturnStmt);
     }
@@ -48,7 +51,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
     private String visitProgram(JmmNode program, Void unused) {
 
         // Get class decl node
-        var classDecl = program.getChild(0);
+        var classDecl = program.getChildren(Kind.CLASS_DECL).get(0);
         SpecsCheck.checkArgument(classDecl.isInstance("ClassDecl"), () -> "Expected a node of type 'ClassDecl', but instead got '" + classDecl.getKind() + "'");
 
         return visit(classDecl);
@@ -61,8 +64,13 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         var className = table.getClassName();
         code.append(".class ").append(className).append(NL).append(NL);
 
-        // TODO: Hardcoded to Object, needs to be expanded
-        code.append(".super java/lang/Object").append(NL);
+        // generate super class if it exists
+        if(!Objects.equals(table.getSuper(), null)){
+            code.append(".super ").append(table.getSuper()).append(NL);
+        }
+        else{
+            code.append(".super java/lang/Object").append(NL);
+        }
 
         // generate a single constructor method
         var defaultConstructor = """
@@ -94,12 +102,12 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         // if method is static, then can start at 0
         // if method is not static, 0 contains 'this', and must start at 1
         // for the initial language, there are no static methods
-        nextRegister = 1;
+        nextRegister = methodDecl.getObject("isStatic", Boolean.class) ? 0 : 1;
 
         // initialize register map and set parameters
         currentRegisters = new HashMap<>();
-        for (var param : methodDecl.getChildren("Param")) {
-            currentRegisters.put(param.get("name"), nextRegister);
+        for (var param : methodDecl.getChildren("ParamDecl")) {
+            currentRegisters.put(param.get("var"), nextRegister);
             nextRegister++;
         }
 
@@ -110,13 +118,44 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         // calculate modifier
         var modifier = methodDecl.getObject("isPublic", Boolean.class) ? "public " : "";
 
+        // TODO: Hardcoded param types and return type, needs to be expanded -> DONE
+        code.append("\n.method ").append(modifier).append(methodName).append("(");
+        for(var param : methodDecl.getChildren("ParamDecl")){
+            switch(param.getChild(0).getKind()){
+                case "IntType":
+                    code.append("I");
+                    break;
+                case "BooleanType":
+                    code.append("Z");
+                    break;
+                case "StringArrayType":
+                    code.append("[Ljava/lang/String;");
+                    break;
+            }
+        }
 
-        // TODO: Hardcoded param types and return type, needs to be expanded
-        code.append("\n.method ").append(modifier).append(methodName).append("(I)I").append(NL);
+        var returnType = table.getReturnType(methodName);
+
+        switch(returnType.getName()){
+            case "int":
+                if(returnType.isArray()) code.append(")[I").append(NL);
+                else code.append(")I").append(NL);
+                break;
+            case "boolean":
+                if(returnType.isArray()) code.append(")[Z").append(NL);
+                else code.append(")Z").append(NL);
+                break;
+            case "void":
+                code.append(")V").append(NL);
+                break;
+        }
 
         // Add limits
         code.append(TAB).append(".limit stack 99").append(NL);
         code.append(TAB).append(".limit locals 99").append(NL);
+
+        if(methodDecl.getObject("isStatic", Boolean.class)) code.append("");
+        else code.append(TAB).append("aload_0").append(NL);
 
         for (var stmt : methodDecl.getChildren("Stmt")) {
             // Get code for statement, split into lines and insert the necessary indentation
@@ -137,6 +176,15 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         return code.toString();
     }
 
+    private String visitNewOpObject(JmmNode newOp, Void unused) {
+        var code = new StringBuilder();
+
+        var lhs = newOp.getChild(0);
+        SpecsCheck.checkArgument(lhs.isInstance("NewOp"), () -> "Expected a node of type 'NewOp', but instead got '" + lhs.getKind() + "'");
+
+        return code.toString();
+    }
+
     private String visitAssignStmt(JmmNode assignStmt, Void unused) {
         var code = new StringBuilder();
 
@@ -145,9 +193,9 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         // store value in top of the stack in destination
         var lhs = assignStmt.getChild(0);
-        SpecsCheck.checkArgument(lhs.isInstance("VarRefExpr"), () -> "Expected a node of type 'VarRefExpr', but instead got '" + lhs.getKind() + "'");
+        SpecsCheck.checkArgument(lhs.isInstance("Identifier"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
 
-        var destName = lhs.get("name");
+        var destName = lhs.get("value");
 
         // get register
         var reg = currentRegisters.get(destName);
@@ -169,11 +217,23 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         var code = new StringBuilder();
 
-        // TODO: Hardcoded to always return an int type, needs to be expanded
+        // TODO: Hardcoded to always return an int type, needs to be expanded -> DONE
 
         // generate code that will put the value of the return on the top of the stack
         exprGenerator.visit(returnStmt.getChild(0), code);
-        code.append("ireturn").append(NL);
+        var returnType = table.getReturnType(returnStmt.getAncestor("MethodDecl").get().get("name"));
+
+        switch(returnType.getName()){
+            case "int":
+                code.append("ireturn").append(NL);
+                break;
+            case "boolean":
+                code.append("ireturn").append(NL);
+                break;
+            case "void":
+                code.append("return").append(NL);
+                break;
+        }
 
         return code.toString();
     }

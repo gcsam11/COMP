@@ -27,6 +27,43 @@ public class ReturnTypes extends AnalysisVisitor {
 
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
         currentMethod = method.get("name");
+
+        if(Objects.equals(method.getChild(0).getKind(), Kind.VOID_TYPE.getNodeName())){
+            return null;
+        }
+
+        if(method.getDescendants(Kind.RETURN_STMT).isEmpty()){
+            var message = String.format("Method '%s' does not have a return statement", currentMethod);
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(method.getChildren().get(method.getChildren().size() - 1)),
+                    NodeUtils.getColumn(method.getChildren().get(method.getChildren().size() - 1)),
+                    message,
+                    null)
+            );
+        }
+
+        if(method.getDescendants(Kind.RETURN_STMT).size() > 1){
+            var message = String.format("Method '%s' has more than one return statement", currentMethod);
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(method.getChildren().get(method.getChildren().size() - 1)),
+                    NodeUtils.getColumn(method.getChildren().get(method.getChildren().size() - 1)),
+                    message,
+                    null)
+            );
+        }
+
+        if(!method.getChildren().get(method.getChildren().size() - 1).getKind().equals(Kind.RETURN_STMT.getNodeName())){
+            var message = String.format("Method '%s' does not end with a return statement", currentMethod);
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(method.getChildren().get(method.getChildren().size() - 1)),
+                    NodeUtils.getColumn(method.getChildren().get(method.getChildren().size() - 1)),
+                    message,
+                    null)
+            );
+        }
         return null;
     }
 
@@ -34,10 +71,8 @@ public class ReturnTypes extends AnalysisVisitor {
         try{
             var returnType = TypeUtils.getExprType(returnStmt.getChild(0), table, currentMethod);
             var methodReturnType = table.getReturnType(currentMethod);
-            if(!Objects.equals(returnType, methodReturnType)
-                    && !table.getImports().contains(returnType.getName())
-                    && (!table.getImports().contains(table.getSuper()) && !Objects.equals(returnType.getName(), table.getClassName()))){
-                var message = String.format("Return type of '%s' does not match '%s' method's type", returnStmt.getChild(0).get("value"), currentMethod);
+            if(!Objects.equals(returnType, methodReturnType) && !table.getImports().contains(returnType.getName()) && (!table.getImports().contains(table.getSuper()) && !Objects.equals(returnType.getName(), table.getClassName()))){
+                var message = String.format("Return type of '%s' does not match '%s' method's type", returnStmt.getChild(0).getOptional("value").orElse(returnStmt.getChild(0).get("func")), currentMethod);
                 addReport(Report.newError(
                         Stage.SEMANTIC,
                         NodeUtils.getLine(returnStmt),
@@ -45,6 +80,7 @@ public class ReturnTypes extends AnalysisVisitor {
                         message,
                         null)
                 );
+                return null;
             }
         } catch (RuntimeException e) {
             // Do Nothing

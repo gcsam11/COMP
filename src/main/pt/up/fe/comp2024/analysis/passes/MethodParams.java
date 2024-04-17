@@ -1,6 +1,7 @@
 package pt.up.fe.comp2024.analysis.passes;
 
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
+import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.JmmNode;
 import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.comp.jmm.report.Stage;
@@ -82,7 +83,7 @@ public class MethodParams extends AnalysisVisitor {
                 var methodParam = methodParams.get(i);
                 var callParam = callParams.get(i);
                 var callParamType = TypeUtils.getExprType(callParam, table, currentMethod);
-                if(!Objects.equals(methodParam.getName(), callParamType.getName())){
+                if(!Objects.equals(methodParam.getType(), callParamType)){
                     return false;
                 }
             }
@@ -97,6 +98,12 @@ public class MethodParams extends AnalysisVisitor {
         if(methodParams.size() > callParams.size()){
             return false;
         }
+        // check if there is an int array in the parameters and in the same position as varargs
+        if(Objects.equals(TypeUtils.getExprType(callParams.get(methodParams.size()-1), table, currentMethod), TypeUtils.getIntArrayType())){
+            if(methodParams.size() == callParams.size()) return true;
+            else return false;
+        }
+
         for(int i = 0; i < methodParams.size()-1; i++){
             var methodParam = methodParams.get(i);
             var callParam = callParams.get(i);

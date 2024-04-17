@@ -5,13 +5,13 @@ grammar Javamm;
 }
 
 EQUALS : '=';
-SEMI : ';' ;
-LCURLY : '{' ;
-RCURLY : '}' ;
-LPAREN : '(' ;
-RPAREN : ')' ;
-MUL : '*' ;
-ADD : '+' ;
+SEMI : ';';
+LCURLY : '{';
+RCURLY : '}';
+LPAREN : '(';
+RPAREN : ')';
+MUL : '*';
+ADD : '+';
 SUB : '-';
 DIV : '/';
 DOT : '.';
@@ -41,7 +41,6 @@ VOID : 'void' ;
 STRING : 'String' ;
 IMPORT : 'import';
 EXTENDS : 'extends';
-LENGTH : 'length';
 
 INTEGER : '0' | [1-9][0-9]* ;
 ID : [a-zA-Z_$][a-zA-Z0-9_$]*;
@@ -67,8 +66,8 @@ varDeclaration
     : type varName=ID SEMI #VarDecl
     ;
 
-methodDeclaration locals [boolean isPublic=false]
-    : (PUBLIC {$isPublic=true;})? (STATIC)? type name=ID LPAREN ( param ( COMMA param )* )? RPAREN LCURLY (varDeclaration)* ( stmt )* RCURLY #MethodDecl
+methodDeclaration locals [boolean isPublic=false, boolean isStatic=false]
+    : (PUBLIC {$isPublic=true;})? (STATIC {$isStatic=true;})? type name=ID LPAREN ( param ( COMMA param )* )? RPAREN LCURLY (varDeclaration)* ( stmt )* RCURLY #MethodDecl
     ;
 
 param
@@ -84,7 +83,6 @@ type locals [boolean isArray=false, boolean isVarargs=false]
     | typeName=STRING LSQUARE RSQUARE {$isArray=true;} #StringArrayType
     | typeName=ID #IdentifierType
     | typeName=VOID #VoidType
-    | (anIntArray {$isArray=true;}) #AnIntArrayType
     ;
 
 stmt
@@ -97,12 +95,13 @@ stmt
     | RETURN expr SEMI #ReturnStmt
     ;
 expr
-    : expr op=DOT LENGTH #LengthOp
-    | expr (op=DOT func=ID LPAREN ( expr ( COMMA expr )* )? RPAREN) #MemberAccessOp
+    : expr op=DOT value=ID #LengthOp
+    | expr op=DOT func=ID LPAREN ( expr ( COMMA expr )* )? RPAREN #MemberAccessOp
     | expr (LSQUARE expr RSQUARE) #ArrayAccessOp
     | op=LPAREN expr RPAREN #ParenOp
     | op=NEG expr #UnaryOp
-    | (op=NEW value=INT LSQUARE expr RSQUARE | op=NEW value=ID LPAREN RPAREN) #NewOp
+    | op=NEW value=INT LSQUARE expr RSQUARE #NewOpArray
+    | op=NEW value=ID LPAREN RPAREN #NewOpObject
     | expr op=(MUL | DIV) expr #BinaryExpr
     | expr op=(ADD | SUB) expr #BinaryExpr
     | expr op=LT expr #BinaryExpr
@@ -115,8 +114,4 @@ expr
     | value=THIS #This
     | value=NULL #Null
     | value=INTEGER #IntegerLiteral
-    ;
-
-anIntArray
-    : typeName=INT LSQUARE ( INTEGER ( COMMA INTEGER )* )? RSQUARE
     ;

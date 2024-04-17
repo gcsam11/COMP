@@ -25,10 +25,19 @@ public enum Kind {
     ARRAY_CREATION_OP,
     WHILE_STMT,
     IF_ELSE_STMT,
-    NEW_OP,
+    NEW_OP_ARRAY,
+    NEW_OP_OBJECT,
     MEMBER_ACCESS_OP,
+    THIS,
     INT_ELLIPSIS_TYPE,
-    THIS;
+    STRING_ARRAY_TYPE,
+    VOID_TYPE,
+    INT_ARRAY_TYPE,
+    BOOLEAN_TYPE,
+    INT_TYPE,
+    STRING_TYPE,
+    IDENTIFIER_TYPE,
+    LENGTH_OP;
 
     private static final Set<Kind> STATEMENTS = Set.of(ASSIGN_STMT, RETURN_STMT);
     private static final Set<Kind> EXPRESSIONS = Set.of(BINARY_EXPR, INTEGER_LITERAL, IDENTIFIER);

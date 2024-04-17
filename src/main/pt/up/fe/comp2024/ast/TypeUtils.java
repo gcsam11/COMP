@@ -3,19 +3,20 @@ package pt.up.fe.comp2024.ast;
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.JmmNode;
-import pt.up.fe.comp.jmm.report.Report;
-import pt.up.fe.comp.jmm.report.Stage;
-import java.util.Objects;
 
 public class TypeUtils {
 
     private static final String INT_TYPE_NAME = "int";
     private static final String BOOLEAN_TYPE_NAME = "boolean";
-
+    private static final String STRING_TYPE_NAME = "String";
+    private static final String VOID_TYPE_NAME = "void";
     public static String getIntTypeName() {
         return INT_TYPE_NAME;
     }
     public static String getBooleanTypeName() { return BOOLEAN_TYPE_NAME; }
+    public static String getStringTypeName() { return STRING_TYPE_NAME; }
+    public static String getVoidTypeName(){ return VOID_TYPE_NAME; }
+    public static Type getIntArrayType() { return new Type(INT_TYPE_NAME, true); }
 
     /**
      * Gets the {@link Type} of an arbitrary expression.
@@ -33,13 +34,16 @@ public class TypeUtils {
         Type type = switch (kind) {
             case BINARY_EXPR -> getBinExprType(expr);
             case IDENTIFIER -> getIdentifierType(expr, table, currentMethod);
+            case PARAM_DECL -> getParamDeclType(expr, table, currentMethod);
             case INTEGER_LITERAL -> new Type(INT_TYPE_NAME, false);
             case BOOLEAN_LITERAL -> new Type(BOOLEAN_TYPE_NAME, false);
             case ARRAY_ACCESS_OP -> new Type(INT_TYPE_NAME, false);
             case ARRAY_CREATION_OP -> getArrayType(expr, table, currentMethod);
-            case NEW_OP -> getNewOpType(expr, table, currentMethod);
+            case NEW_OP_ARRAY -> getNewOpType(expr, table, currentMethod);
+            case NEW_OP_OBJECT -> getNewOpType(expr, table, currentMethod);
             case MEMBER_ACCESS_OP -> getMemberAccessType(expr, table, currentMethod);
             case THIS -> new Type(table.getClassName(), false);
+            case LENGTH_OP -> new Type(INT_TYPE_NAME, false);
             default -> throw new UnsupportedOperationException("Can't compute type for expression kind '" + kind + "'");
         };
 
@@ -98,6 +102,24 @@ public class TypeUtils {
         }
 
         throw new RuntimeException("Undeclared symbol '" + id + "'.");
+    }
+
+    private static Type getParamDeclType(JmmNode paramDecl, SymbolTable table, String currentMethod) {
+        var kind = Kind.fromString(paramDecl.getChild(0).getKind());
+
+        Type type = switch(kind){
+            case VOID_TYPE -> new Type(getVoidTypeName(), false);
+            case STRING_ARRAY_TYPE -> new Type(getStringTypeName(), true);
+            case INT_ARRAY_TYPE -> new Type(getIntTypeName(), true);
+            case BOOLEAN_TYPE -> new Type(getBooleanTypeName(), false);
+            case STRING_TYPE -> new Type(getStringTypeName(), false);
+            case INT_TYPE -> new Type(getIntTypeName(), false);
+            case INT_ELLIPSIS_TYPE -> new Type("int...", true);
+            case IDENTIFIER_TYPE -> getExprType(paramDecl.getDescendants(Kind.IDENTIFIER_TYPE).get(0), table, currentMethod);
+            default -> throw new RuntimeException(kind + " is not a ParamDecl type.");
+        };
+
+        return type;
     }
 
     private static Type getArrayType(JmmNode arrayCreationOp, SymbolTable table, String currentMethod) {

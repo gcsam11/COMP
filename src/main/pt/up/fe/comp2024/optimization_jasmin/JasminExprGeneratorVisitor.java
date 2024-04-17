@@ -22,8 +22,10 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         // Using strings to avoid compilation problems in projects that
         // might no longer have the equivalent enums in Kind class.
         addVisit("IntegerLiteral", this::visitIntegerLiteral);
-        addVisit("VarRefExpr", this::visitVarRefExpr);
+        addVisit("Identifier", this::visitIdentifier);
         addVisit("BinaryExpr", this::visitBinaryExpr);
+        //addVisit("NewOpArray", this::visitNewOpArray);
+        addVisit("NewOpObject", this::visitNewOpObject);
     }
 
     private Void visitIntegerLiteral(JmmNode integerLiteral, StringBuilder code) {
@@ -31,8 +33,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         return null;
     }
 
-    private Void visitVarRefExpr(JmmNode varRefExpr, StringBuilder code) {
-        var name = varRefExpr.get("name");
+    private Void visitIdentifier(JmmNode idExpr, StringBuilder code) {
+        var name = idExpr.get("value");
 
         // get register
         var reg = currentRegisters.get(name);
@@ -50,14 +52,26 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
         // get the operation
         var op = switch (binaryExpr.get("op")) {
-            case "+" -> "iadd";
+            case "/" -> "idiv";
             case "*" -> "imul";
+            case "+" -> "iadd";
+            case "-" -> "isub";
+            case "<" -> "iflt"; // fazer manualmente, if i < 7 return 1 else return 0
+            case "&&" -> "iand";
             default -> throw new NotImplementedException(binaryExpr.get("op"));
         };
 
         // apply operation
         code.append(op).append(NL);
 
+        return null;
+    }
+
+
+    private Void visitNewOpObject(JmmNode newOp, StringBuilder code) {
+        code.append("new " + newOp.get("type") + NL);
+        code.append("dup" + NL);
+        code.append("invokespecial " + newOp.get("type") + "/<init>()V" + NL);
         return null;
     }
 
