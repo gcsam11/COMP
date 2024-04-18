@@ -82,9 +82,12 @@ public class ReturnTypes extends AnalysisVisitor {
             var returnType = TypeUtils.getExprType(returnStmt.getChild(0), table, currentMethod);
             var methodReturnType = table.getReturnType(currentMethod);
             if(!TypeUtils.compareTypes(returnType, methodReturnType) && !table.getImports().contains(returnType.getName()) && (!table.getImports().contains(table.getSuper()) && !Objects.equals(returnType.getName(), table.getClassName()))){
-                var name = "";
+                String name;
                 if(Objects.equals(returnStmt.getChild(0).getKind(), Kind.MEMBER_ACCESS_OP.getNodeName())){
                     name = returnStmt.getChild(0).get("func");
+                }
+                else if(Objects.equals(returnStmt.getChild(0).getKind(), Kind.ARRAY_CREATION_OP.getNodeName())){
+                    name = "Array Creation";
                 }
                 else{
                     name = returnStmt.getChild(0).get("value");

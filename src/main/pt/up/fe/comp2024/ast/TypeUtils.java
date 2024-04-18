@@ -189,6 +189,6 @@ public class TypeUtils {
     }
 
     public static boolean compareTypes(Type type1, Type type2){
-        return type1.getName().equals(type2.getName()) && type1.isArray() == type2.isArray();
+        return (type1.getName().equals(type2.getName()) && type1.isArray() == type2.isArray());
     }
 }

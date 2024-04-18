@@ -278,7 +278,7 @@ public class SemanticAnalysisTest {
     public void varargsReturn() {
         var result = TestUtils
                 .analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/VarargsInReturnInvalid.jmm"));
-        TestUtils.noErrors(result);
+        TestUtils.mustFail(result);
     }
 }
 
