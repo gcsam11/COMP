@@ -40,7 +40,7 @@ public class WrongOpTypes extends AnalysisVisitor {
             if(binaryExpr.get("op").equals("<") && leftType.getName().equals(TypeUtils.getIntTypeName()) && rightType.getName().equals(leftType.getName()) && !leftType.isArray() && !rightType.isArray()){
                 return null;
             }
-            else if(leftType.getName().equals(opType.getName()) && rightType.getName().equals(opType.getName()) && !leftType.isArray() && !rightType.isArray()){
+            else if(leftType.getName().equals(opType.getName()) && rightType.getName().equals(opType.getName()) && leftType.isArray() == rightType.isArray()){
                 return null;
             }
             else{

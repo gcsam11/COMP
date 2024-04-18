@@ -1,13 +1,10 @@
-import A;
-import A;
+import foo.A;
+import bar.A;
 
 class VarargsReturn {
-    int a;
-    int a;
-
-    public int foo(int a, int a) {
-        int b;
-        int b;
-        return 1;
+    public int[] foo(){
+        int[] a;
+        int[] b;
+        return a + b;
     }
 }

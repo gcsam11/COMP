@@ -1,5 +1,6 @@
 package pt.up.fe.comp2024.analysis.passes;
 
+import pt.up.fe.comp.jmm.analysis.table.Symbol;
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.JmmNode;
@@ -11,6 +12,8 @@ import pt.up.fe.comp2024.ast.NodeUtils;
 import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -25,6 +28,7 @@ public class WrongInit extends AnalysisVisitor {
         addVisit(Kind.CLASS_DECL, this::visitClassDecl);
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
         addVisit(Kind.ASSIGN_STMT, this::visitAssignStmt);
+        addVisit(Kind.VAR_DECL, this::visitVarDecl);
         addVisit(Kind.LENGTH_OP, this::visitLengthOp);
     }
 
@@ -61,19 +65,6 @@ public class WrongInit extends AnalysisVisitor {
         }
 
         i = 0;
-        for(var var : table.getImports()){
-            if(table.getImports().subList(i + 1, table.getImports().size()).contains(var)){
-                var message = String.format("Import '%s' is duplicated", var);
-                addReport(Report.newError(
-                        Stage.SEMANTIC,
-                        NodeUtils.getLine(classDecl),
-                        NodeUtils.getColumn(classDecl),
-                        message,
-                        null)
-                );
-            }
-            i++;
-        }
 
         return null;
     }
@@ -239,6 +230,23 @@ public class WrongInit extends AnalysisVisitor {
             );
         }
 
+        return null;
+    }
+
+    private Void visitVarDecl(JmmNode varDeclaration, SymbolTable table){
+        try{
+            var type = TypeUtils.getExprType(varDeclaration, table, currentMethod);
+        }
+        catch (RuntimeException e) {
+            var message = String.format("'%s'", e.getMessage());
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(varDeclaration),
+                    NodeUtils.getColumn(varDeclaration),
+                    message,
+                    null)
+            );
+        }
         return null;
     }
 
