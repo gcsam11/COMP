@@ -22,14 +22,95 @@ public class WrongInit extends AnalysisVisitor {
     private String currentMethod;
     @Override
     public void buildVisitor() {
+        addVisit(Kind.CLASS_DECL, this::visitClassDecl);
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
         addVisit(Kind.ASSIGN_STMT, this::visitAssignStmt);
         addVisit(Kind.LENGTH_OP, this::visitLengthOp);
     }
 
+    // check duplicates
+    private Void visitClassDecl(JmmNode classDecl, SymbolTable table) {
+        int i = 0;
+        for(var method : table.getMethods()){
+            if(table.getMethods().subList(i + 1, table.getMethods().size()).contains(method)){
+                var message = String.format("Method '%s' is duplicated", method);
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(classDecl),
+                        NodeUtils.getColumn(classDecl),
+                        message,
+                        null)
+                );
+            }
+            i++;
+        }
+
+        i = 0;
+        for(var field : table.getFields()){
+            if(table.getFields().subList(i + 1, table.getFields().size()).contains(field)){
+                var message = String.format("Field '%s' is duplicated", field.getName());
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(classDecl),
+                        NodeUtils.getColumn(classDecl),
+                        message,
+                        null)
+                );
+            }
+            i++;
+        }
+
+        i = 0;
+        for(var var : table.getImports()){
+            if(table.getImports().subList(i + 1, table.getImports().size()).contains(var)){
+                var message = String.format("Import '%s' is duplicated", var);
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(classDecl),
+                        NodeUtils.getColumn(classDecl),
+                        message,
+                        null)
+                );
+            }
+            i++;
+        }
+
+        return null;
+    }
+
     // check if method name is MAIN, and it's declaration is correct
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
         currentMethod = method.get("name");
+
+        int i = 0;
+        for(var param : table.getParameters(currentMethod)){
+            if(table.getParameters(currentMethod).subList(i + 1, table.getParameters(currentMethod).size()).contains(param)){
+                var message = String.format("Parameter '%s' is duplicated", param.getName());
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(method),
+                        NodeUtils.getColumn(method),
+                        message,
+                        null)
+                );
+            }
+            i++;
+        }
+
+        i = 0;
+        for(var var : table.getLocalVariables(currentMethod)){
+            if(table.getLocalVariables(currentMethod).subList(i + 1, table.getLocalVariables(currentMethod).size()).contains(var)){
+                var message = String.format("Variable '%s' is duplicated", var.getName());
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(method),
+                        NodeUtils.getColumn(method),
+                        message,
+                        null)
+                );
+            }
+            i++;
+        }
 
         if(currentMethod.equals("main")){
             var parameters = method.getChildren(Kind.PARAM_DECL);
@@ -120,6 +201,17 @@ public class WrongInit extends AnalysisVisitor {
 
     private Void visitAssignStmt(JmmNode assignStmt, SymbolTable table) {
         SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
+
+        if(!assignStmt.getChild(0).getKind().equals(Kind.IDENTIFIER.getNodeName())){
+            var message = "Left side of assignment statement should be an identifier";
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(assignStmt),
+                    NodeUtils.getColumn(assignStmt),
+                    message,
+                    null)
+            );
+        }
 
         try {
             Type idType = TypeUtils.getExprType(assignStmt.getChild(0), table, currentMethod);

@@ -171,4 +171,8 @@ public class TypeUtils {
     public static boolean checkIfTypeIsPrimitive(Type type){
         return type.getName().equals(INT_TYPE_NAME) || type.getName().equals(BOOLEAN_TYPE_NAME);
     }
+
+    public static boolean compareTypes(Type type1, Type type2){
+        return type1.getName().equals(type2.getName()) && type1.isArray() == type2.isArray();
+    }
 }

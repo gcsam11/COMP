@@ -68,11 +68,28 @@ public class ReturnTypes extends AnalysisVisitor {
     }
 
     private Void visitReturnStmt(JmmNode returnStmt, SymbolTable table){
+        if(returnStmt.getChild(0).getKind().equals(Kind.NEW_OP_ARRAY.getNodeName())){
+            var message = "Return type of array creation is not allowed";
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(returnStmt),
+                    NodeUtils.getColumn(returnStmt),
+                    message,
+                    null)
+            );
+        }
         try{
             var returnType = TypeUtils.getExprType(returnStmt.getChild(0), table, currentMethod);
             var methodReturnType = table.getReturnType(currentMethod);
-            if(!Objects.equals(returnType, methodReturnType) && !table.getImports().contains(returnType.getName()) && (!table.getImports().contains(table.getSuper()) && !Objects.equals(returnType.getName(), table.getClassName()))){
-                var message = String.format("Return type of '%s' does not match '%s' method's type", returnStmt.getChild(0).getOptional("value").orElse(returnStmt.getChild(0).get("func")), currentMethod);
+            if(!TypeUtils.compareTypes(returnType, methodReturnType) && !table.getImports().contains(returnType.getName()) && (!table.getImports().contains(table.getSuper()) && !Objects.equals(returnType.getName(), table.getClassName()))){
+                var name = "";
+                if(Objects.equals(returnStmt.getChild(0).getKind(), Kind.MEMBER_ACCESS_OP.getNodeName())){
+                    name = returnStmt.getChild(0).get("func");
+                }
+                else{
+                    name = returnStmt.getChild(0).get("value");
+                }
+                var message = String.format("Return type of '%s' does not match '%s' method's type", name, currentMethod);
                 addReport(Report.newError(
                         Stage.SEMANTIC,
                         NodeUtils.getLine(returnStmt),
