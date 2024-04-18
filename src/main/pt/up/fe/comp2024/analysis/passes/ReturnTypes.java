@@ -68,7 +68,7 @@ public class ReturnTypes extends AnalysisVisitor {
     }
 
     private Void visitReturnStmt(JmmNode returnStmt, SymbolTable table){
-        if(returnStmt.getChild(0).getKind().equals(Kind.NEW_OP_ARRAY.getNodeName()) || returnStmt.getChild(0).getKind().equals(Kind.ARRAY_CREATION_OP.getNodeName())){
+        if(returnStmt.getChild(0).getKind().equals(Kind.NEW_OP_ARRAY.getNodeName())){
             var message = "Return type of array creation is not allowed";
             addReport(Report.newError(
                     Stage.SEMANTIC,
