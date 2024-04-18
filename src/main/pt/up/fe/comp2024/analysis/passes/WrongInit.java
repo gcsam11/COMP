@@ -209,6 +209,22 @@ public class WrongInit extends AnalysisVisitor {
 
         if(!assignStmt.getChild(0).getKind().equals(Kind.IDENTIFIER.getNodeName())
                 && !assignStmt.getChild(0).getKind().equals(Kind.ARRAY_ACCESS_OP.getNodeName())){
+            if(assignStmt.getChild(0).getKind().equals(Kind.ARRAY_ACCESS_OP.getNodeName())){
+                if(assignStmt.getChild(0).getChildren(Kind.IDENTIFIER).size() > 0){
+                    return null;
+                }
+                else{
+                    var message = "Left side of assignment statement should be an identifier";
+                    addReport(Report.newError(
+                            Stage.SEMANTIC,
+                            NodeUtils.getLine(assignStmt),
+                            NodeUtils.getColumn(assignStmt),
+                            message,
+                            null)
+                    );
+                }
+                return null;
+            }
             var message = "Left side of assignment statement should be an identifier";
             addReport(Report.newError(
                     Stage.SEMANTIC,
