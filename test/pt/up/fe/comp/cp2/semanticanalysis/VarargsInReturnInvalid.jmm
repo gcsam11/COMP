@@ -1,0 +1,13 @@
+import A;
+import A;
+
+class VarargsReturn {
+    int a;
+    int a;
+
+    public int foo(int a, int a) {
+        int b;
+        int b;
+        return 1;
+    }
+}
