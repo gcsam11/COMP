@@ -4,6 +4,7 @@ import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.ast.AJmmVisitor;
 import pt.up.fe.comp.jmm.ast.JmmNode;
 import pt.up.fe.comp2024.ast.Kind;
+import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 import pt.up.fe.specs.util.utilities.StringLines;
 
@@ -45,6 +46,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit("NewOpObject", this::visitNewOpObject);
         addVisit("AssignStmt", this::visitAssignStmt);
         addVisit("ReturnStmt", this::visitReturnStmt);
+        addVisit("ExprStmt", this::visitExprStmt);
     }
 
 
@@ -62,23 +64,43 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         // generate class name
         var className = table.getClassName();
-        code.append(".class ").append(className).append(NL).append(NL);
+        code.append(".class ").append(className).append(NL);
+        var superClass = "empty";
 
         // generate super class if it exists
         if(!Objects.equals(table.getSuper(), null)){
             code.append(".super ").append(table.getSuper()).append(NL);
+            superClass = "invokespecial " + table.getSuper() +"/<init>()V\n";
         }
         else{
             code.append(".super java/lang/Object").append(NL);
+            superClass = "invokespecial java/lang/Object/<init>()V\n";
+        }
+
+        // TODO - Generate class fields
+        for(var field : table.getFields()) {
+            var fieldType = field.getType().getName();
+            var fieldName = field.getName();
+            var auxfield = "empty";
+            switch (fieldType) {
+                case "int":
+                    auxfield = "I";
+                    break;
+                case "boolean":
+                    auxfield = "Z";
+                    break;
+            }
+            code.append(".field "+fieldName+" "+auxfield).append(NL);
+
         }
 
         // generate a single constructor method
         var defaultConstructor = """
                 ;default constructor
                 .method public <init>()V
-                    aload_0
-                    invokespecial java/lang/Object/<init>()V
-                    return
+                    aload_0    
+                \t"""+superClass+"""
+                \treturn
                 .end method
                 """;
         code.append(defaultConstructor);
@@ -93,7 +115,6 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
     private String visitMethodDecl(JmmNode methodDecl, Void unused) {
         var methodName = methodDecl.get("name");
-
 
         // set method
         currentMethod = methodName;
@@ -111,7 +132,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             nextRegister++;
         }
 
-        exprGenerator = new JasminExprGeneratorVisitor(currentRegisters);
+        exprGenerator = new JasminExprGeneratorVisitor(currentRegisters, table, currentMethod);
 
         var code = new StringBuilder();
 
@@ -119,7 +140,11 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         var modifier = methodDecl.getObject("isPublic", Boolean.class) ? "public " : "";
 
         // TODO: Hardcoded param types and return type, needs to be expanded -> DONE
-        code.append("\n.method ").append(modifier).append(methodName).append("(");
+        if(methodDecl.getObject("isStatic",Boolean.class))
+            code.append("\n.method ").append(modifier).append("static ").append(methodName).append("(");
+        else
+            code.append("\n.method ").append(modifier).append(methodName).append("(");
+
         for(var param : methodDecl.getChildren("ParamDecl")){
             switch(param.getChild(0).getKind()){
                 case "IntType":
@@ -154,8 +179,16 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         code.append(TAB).append(".limit stack 99").append(NL);
         code.append(TAB).append(".limit locals 99").append(NL);
 
-        if(methodDecl.getObject("isStatic", Boolean.class)) code.append("");
-        else code.append(TAB).append("aload_0").append(NL);
+        if (!methodDecl.getObject("isStatic", Boolean.class)) { // if it has a "This" Node, only call aload_0 when This is called
+            boolean thisExists = false;
+            for(JmmNode descendant: methodDecl.getDescendants()) {
+                if(descendant.getKind().equals("This")) {
+                    thisExists = true;
+                    break;
+                }
+            }
+            if(!thisExists) code.append(TAB).append("aload_0").append(NL);
+        }
 
         for (var stmt : methodDecl.getChildren("Stmt")) {
             // Get code for statement, split into lines and insert the necessary indentation
@@ -164,6 +197,9 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
             code.append(instCode);
         }
+
+        if(returnType.getName().equals("void"))
+            code.append("\treturn").append(NL);
 
         code.append(".end method\n");
 
@@ -185,11 +221,35 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         return code.toString();
     }
 
+    private String visitExprStmt(JmmNode exprStmt, Void unused) {
+        var code = new StringBuilder();
+        var stmt = exprStmt.getChild(0);
+
+        if (stmt.getKind().equals("MemberAccessOp")) {
+            // store value in top of the stack in destination
+            var lhs = stmt.getChild(0);
+            SpecsCheck.checkArgument(lhs.isInstance("Identifier") || lhs.isInstance("This"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
+
+            var destName = lhs.get("value");
+
+            // get register
+            var reg = currentRegisters.get(destName);
+
+            // If no mapping, variable has not been assigned yet, create mapping
+            if (reg == null) {
+                reg = nextRegister;
+                currentRegisters.put(destName, reg);
+                nextRegister++;
+            }
+
+            exprGenerator.visit(stmt, code);
+        }
+
+        return code.toString();
+    }
+
     private String visitAssignStmt(JmmNode assignStmt, Void unused) {
         var code = new StringBuilder();
-
-        // generate code that will put the value on the right on top of the stack
-        exprGenerator.visit(assignStmt.getChild(1), code);
 
         // store value in top of the stack in destination
         var lhs = assignStmt.getChild(0);
@@ -207,8 +267,44 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             nextRegister++;
         }
 
-        // TODO: Hardcoded for int type, needs to be expanded
-        code.append("istore ").append(reg).append(NL);
+        // generate code that will put the value on the right on top of the stack
+        exprGenerator.visit(assignStmt.getChild(1), code);
+
+        boolean isField = false;
+        var fieldType = "empty";
+        for(var field : table.getFields()) {
+            if (field.getName().equals(destName)) {
+                isField = true;
+                fieldType = field.getType().getName();
+                break;
+            }
+        }
+
+        if(fieldType.equals("int"))
+            fieldType = "I";
+        else if(fieldType.equals("boolean"))
+            fieldType = "Z";
+
+        String literalType = assignStmt.getChild(1).getKind();
+        switch (literalType) {
+            case "IntegerLiteral", "BooleanLiteral":
+                if(isField)
+                    code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
+                else
+                    code.append("istore ").append(reg).append(NL);
+                break;
+            case "MemberAccessOp":
+                var memberAccessType = TypeUtils.getExprType(assignStmt.getChild(1), table, currentMethod);
+                if(isField)
+                    code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
+                else if(TypeUtils.checkIfTypeIsPrimitive(memberAccessType))
+                    code.append("istore ").append(reg).append(NL);
+                else
+                    code.append("astore ").append(reg).append(NL);
+                break;
+        }
+
+
 
         return code.toString();
     }
@@ -217,17 +313,12 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         var code = new StringBuilder();
 
-        // TODO: Hardcoded to always return an int type, needs to be expanded -> DONE
-
         // generate code that will put the value of the return on the top of the stack
         exprGenerator.visit(returnStmt.getChild(0), code);
         var returnType = table.getReturnType(returnStmt.getAncestor("MethodDecl").get().get("name"));
 
         switch(returnType.getName()){
-            case "int":
-                code.append("ireturn").append(NL);
-                break;
-            case "boolean":
+            case "int", "boolean":
                 code.append("ireturn").append(NL);
                 break;
             case "void":

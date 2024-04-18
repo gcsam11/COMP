@@ -31,30 +31,32 @@ public class WrongOpTypes extends AnalysisVisitor {
     private Void visitBinaryExpr(JmmNode binaryExpr, SymbolTable table) {
         SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
 
-        Type opType = TypeUtils.getExprType(binaryExpr, table, currentMethod);
-        Type leftType = TypeUtils.getExprType(binaryExpr.getChild(0), table, currentMethod);
-        Type rightType = TypeUtils.getExprType(binaryExpr.getChild(1), table, currentMethod);
+        try{
 
-        if(binaryExpr.get("op").equals("<") && leftType.getName().equals(TypeUtils.getIntTypeName()) && rightType.getName().equals(leftType.getName()) && !leftType.isArray() && !rightType.isArray()){
-            return null;
+            Type opType = TypeUtils.getExprType(binaryExpr, table, currentMethod);
+            Type leftType = TypeUtils.getExprType(binaryExpr.getChild(0), table, currentMethod);
+            Type rightType = TypeUtils.getExprType(binaryExpr.getChild(1), table, currentMethod);
+
+            if(binaryExpr.get("op").equals("<") && leftType.getName().equals(TypeUtils.getIntTypeName()) && rightType.getName().equals(leftType.getName()) && !leftType.isArray() && !rightType.isArray()){
+                return null;
+            }
+            else if(leftType.getName().equals(opType.getName()) && rightType.getName().equals(opType.getName()) && !leftType.isArray() && !rightType.isArray()){
+                return null;
+            }
+            else{
+                var message = String.format("'%s' and '%s' types in operation '%s' are incompatible.", binaryExpr.getChild(0).get("value"), binaryExpr.getChild(1).get("value"), binaryExpr.get("op"));
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(binaryExpr),
+                        NodeUtils.getColumn(binaryExpr),
+                        message,
+                        null)
+                );
+            }
         }
-        else if(leftType.getName().equals(opType.getName()) && rightType.getName().equals(opType.getName()) && !leftType.isArray() && !rightType.isArray()){
-            return null;
+        catch(RuntimeException e){
+            // Do Nothing
         }
-        else{
-            var message = String.format("'%s' and '%s' types in operation '%s' are incompatible.", binaryExpr.getChild(0).get("value"), binaryExpr.getChild(1).get("value"), binaryExpr.get("op"));
-            addReport(Report.newError(
-                    Stage.SEMANTIC,
-                    NodeUtils.getLine(binaryExpr),
-                    NodeUtils.getColumn(binaryExpr),
-                    message,
-                    null)
-            );
-        }
-
-
-
-
 
         return null;
     }
