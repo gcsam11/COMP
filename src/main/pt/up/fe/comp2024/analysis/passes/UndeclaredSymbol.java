@@ -32,13 +32,10 @@ public class UndeclaredSymbol extends AnalysisVisitor {
     private Void visitIdentifier(JmmNode identifier, SymbolTable table) {
         SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
 
-        // Check if exists a parameter or variable declaration with the same name as the variable reference
-        var varRefName = identifier.get("value");
-
         try {
-            var idType = TypeUtils.getExprType(identifier, table, currentMethod);
-
-        } catch (RuntimeException e) {
+            TypeUtils.getExprType(identifier, table, currentMethod);
+        }
+        catch (RuntimeException e) {
             // Create error report
             var message = String.format(e.getMessage());
             addReport(Report.newError(
