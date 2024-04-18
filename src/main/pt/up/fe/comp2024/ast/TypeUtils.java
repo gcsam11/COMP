@@ -167,4 +167,8 @@ public class TypeUtils {
         // TODO: Simple implementation that needs to be expanded
         return sourceType.getName().equals(destinationType.getName());
     }
+
+    public static boolean checkIfTypeIsPrimitive(Type type){
+        return type.getName().equals(INT_TYPE_NAME) || type.getName().equals(BOOLEAN_TYPE_NAME);
+    }
 }

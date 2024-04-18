@@ -35,6 +35,10 @@ public class ImportDeclAndMemberAccess extends AnalysisVisitor {
             var methodType = TypeUtils.getExprType(memberAccess, table, currentMethod);
             var methodName = memberAccess.get("func");
 
+            if(checkIfTypeIsPrimitive(methodType)){ // means that the function exists in the class
+                return null;
+            }
+
             if (!table.getImports().isEmpty()) { // There exists imported classes
                 if (table.getImports().contains(table.getSuper())) { // Super class is imported
                     if (methodType.getName().equals(table.getClassName()) || methodType.getName().equals(table.getSuper())) { // Accessing a member of the class or the super class

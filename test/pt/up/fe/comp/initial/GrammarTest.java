@@ -19,7 +19,7 @@ import pt.up.fe.comp.TestUtils;
 public class GrammarTest {
 
 
-    private static final String INSTANCE_METHOD = "methodDecl";
+    private static final String INSTANCE_METHOD = "methodDeclaration";
     private static final String STATEMENT = "stmt";
     private static final String EXPRESSION = "expr";
 

@@ -1,10 +1,10 @@
 package pt.up.fe.comp2024.optimization_jasmin;
 
-import org.stringtemplate.v4.ST;
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.ast.AJmmVisitor;
 import pt.up.fe.comp.jmm.ast.JmmNode;
 import pt.up.fe.comp2024.ast.Kind;
+import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 import pt.up.fe.specs.util.utilities.StringLines;
 
@@ -116,7 +116,6 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
     private String visitMethodDecl(JmmNode methodDecl, Void unused) {
         var methodName = methodDecl.get("name");
 
-
         // set method
         currentMethod = methodName;
 
@@ -133,7 +132,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             nextRegister++;
         }
 
-        exprGenerator = new JasminExprGeneratorVisitor(currentRegisters, table);
+        exprGenerator = new JasminExprGeneratorVisitor(currentRegisters, table, currentMethod);
 
         var code = new StringBuilder();
 
@@ -180,8 +179,15 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         code.append(TAB).append(".limit stack 99").append(NL);
         code.append(TAB).append(".limit locals 99").append(NL);
 
-        if (!methodDecl.getObject("isStatic", Boolean.class)) {
-            code.append(TAB).append("aload_0").append(NL);
+        if (!methodDecl.getObject("isStatic", Boolean.class)) { // if it has a "This" Node, only call aload_0 when This is called
+            boolean thisExists = false;
+            for(JmmNode descendant: methodDecl.getDescendants()) {
+                if(descendant.getKind().equals("This")) {
+                    thisExists = true;
+                    break;
+                }
+            }
+            if(!thisExists) code.append(TAB).append("aload_0").append(NL);
         }
 
         for (var stmt : methodDecl.getChildren("Stmt")) {
@@ -222,7 +228,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         if (stmt.getKind().equals("MemberAccessOp")) {
             // store value in top of the stack in destination
             var lhs = stmt.getChild(0);
-            SpecsCheck.checkArgument(lhs.isInstance("Identifier"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
+            SpecsCheck.checkArgument(lhs.isInstance("Identifier") || lhs.isInstance("This"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
 
             var destName = lhs.get("value");
 
@@ -236,7 +242,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 nextRegister++;
             }
 
-            exprGenerator.visit(stmt.getChild(0), code);
+            exprGenerator.visit(stmt, code);
         }
 
         return code.toString();
@@ -286,6 +292,15 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                     code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
                 else
                     code.append("istore ").append(reg).append(NL);
+                break;
+            case "MemberAccessOp":
+                var memberAccessType = TypeUtils.getExprType(assignStmt.getChild(1), table, currentMethod);
+                if(isField)
+                    code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
+                else if(TypeUtils.checkIfTypeIsPrimitive(memberAccessType))
+                    code.append("istore ").append(reg).append(NL);
+                else
+                    code.append("astore ").append(reg).append(NL);
                 break;
         }
 
