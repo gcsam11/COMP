@@ -36,6 +36,9 @@ public class ArrayAccessOnInt extends AnalysisVisitor {
         Type type = TypeUtils.getExprType(arrayIdExpr, table, currentMethod);
 
         if (type.isArray()){
+            // check if index is inside the array
+            var indexExpr = arrayAccessOp.getChild(1);
+
             return null;
         }
 
