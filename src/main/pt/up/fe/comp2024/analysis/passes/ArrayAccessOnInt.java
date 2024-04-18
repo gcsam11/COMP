@@ -33,24 +33,36 @@ public class ArrayAccessOnInt extends AnalysisVisitor {
 
         var arrayIdExpr = arrayAccessOp.getChild(0);
 
-        Type type = TypeUtils.getExprType(arrayIdExpr, table, currentMethod);
+        try {
 
-        if (type.isArray()){
-            // check if index is inside the array
-            var indexExpr = arrayAccessOp.getChild(1);
+            Type type = TypeUtils.getExprType(arrayIdExpr, table, currentMethod);
 
-            return null;
+            if (type.isArray()) {
+                // check if index is inside the array
+                var indexExpr = arrayAccessOp.getChild(1);
+
+                return null;
+            }
+
+            // Create error report
+            var message = String.format("'%s' is not an array.", arrayIdExpr.get("value"));
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(arrayIdExpr),
+                    NodeUtils.getColumn(arrayIdExpr),
+                    message,
+                    null)
+            );
+        } catch (Exception e) {
+            // Create error report
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(arrayIdExpr),
+                    NodeUtils.getColumn(arrayIdExpr),
+                    e.getMessage(),
+                    null)
+            );
         }
-
-        // Create error report
-        var message = String.format("'%s' is not an array.", arrayIdExpr.get("value"));
-        addReport(Report.newError(
-                Stage.SEMANTIC,
-                NodeUtils.getLine(arrayIdExpr),
-                NodeUtils.getColumn(arrayIdExpr),
-                message,
-                null)
-        );
 
         return null;
     }

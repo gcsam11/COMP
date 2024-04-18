@@ -65,6 +65,20 @@ public class WrongInit extends AnalysisVisitor {
         }
 
         i = 0;
+        // strip dots from import names and get the last part of the name
+        for(var var : table.getImports()){
+            if(table.getImports().subList(i + 1, table.getImports().size()).contains(var)){
+                var message = String.format("Import '%s' is duplicated", var);
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(classDecl),
+                        NodeUtils.getColumn(classDecl),
+                        message,
+                        null)
+                );
+            }
+            i++;
+        }
 
         return null;
     }
