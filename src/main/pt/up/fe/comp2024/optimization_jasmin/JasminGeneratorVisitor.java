@@ -46,6 +46,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit("NewOpObject", this::visitNewOpObject);
         addVisit("AssignStmt", this::visitAssignStmt);
         addVisit("ReturnStmt", this::visitReturnStmt);
+        addVisit("ExprStmt", this::visitExprStmt);
     }
 
 
@@ -210,6 +211,33 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         var lhs = newOp.getChild(0);
         SpecsCheck.checkArgument(lhs.isInstance("NewOp"), () -> "Expected a node of type 'NewOp', but instead got '" + lhs.getKind() + "'");
+
+        return code.toString();
+    }
+
+    private String visitExprStmt(JmmNode exprStmt, Void unused) {
+        var code = new StringBuilder();
+        var stmt = exprStmt.getChild(0);
+
+        if (stmt.getKind().equals("MemberAccessOp")) {
+            // store value in top of the stack in destination
+            var lhs = stmt.getChild(0);
+            SpecsCheck.checkArgument(lhs.isInstance("Identifier"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
+
+            var destName = lhs.get("value");
+
+            // get register
+            var reg = currentRegisters.get(destName);
+
+            // If no mapping, variable has not been assigned yet, create mapping
+            if (reg == null) {
+                reg = nextRegister;
+                currentRegisters.put(destName, reg);
+                nextRegister++;
+            }
+
+            exprGenerator.visit(stmt.getChild(0), code);
+        }
 
         return code.toString();
     }

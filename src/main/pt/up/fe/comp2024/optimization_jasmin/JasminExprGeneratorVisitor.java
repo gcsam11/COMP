@@ -32,15 +32,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         addVisit("BinaryExpr", this::visitBinaryExpr);
         addVisit("NewOpObject", this::visitNewOpObject);
         addVisit("MemberAccessOp", this::visitMemberAccessOpObject);
-        addVisit("ExprStmt", this::visitExprStmt);
     }
 
-    private Void visitExprStmt(JmmNode exprStmt, StringBuilder code) {
-        if (exprStmt.getChild(0).getKind().equals("MemberAccessOp")) {
-            visitMemberAccessOpObject(exprStmt.getChild(0), code);
-        }
-        return null;
-    }
     private Void visitIntegerLiteral(JmmNode integerLiteral, StringBuilder code) {
         code.append("ldc ").append(integerLiteral.get("value")).append(NL);
         return null;
@@ -60,6 +53,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         var name = idExpr.get("value");
         var fieldType = "empty";
         boolean isField = false;
+        boolean isFunc = false;
         for(var field : table.getFields()) {
             if (field.getName().equals(name)) {
                 isField = true;
@@ -67,6 +61,9 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                 break;
             }
         }
+
+        if(!idExpr.getParent().get("func").isEmpty())
+            isFunc = true;
 
         if(fieldType.equals("int"))
             fieldType = "I";
@@ -82,7 +79,12 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             code.append("getfield ").append(table.getClassName()).append("/").append(name).append(" ").append(fieldType).append(NL);
             code.append("istore ").append(identifierBeingAssigned);
         }
-        else {
+        else if(isFunc) {
+            var funcName = idExpr.getParent().get("func");
+            var className = idExpr.getParent().getChild(0).get("value");
+            code.append("aload_0").append(NL);
+            code.append("invokestatic ").append(className).append("/").append(funcName).append("()V").append(NL);
+        } else {
             code.append("iload ").append(reg).append(NL);
         }
 
