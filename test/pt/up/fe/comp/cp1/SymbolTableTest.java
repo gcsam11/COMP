@@ -37,6 +37,12 @@ public class SymbolTableTest {
     }
 
     @Test
+    public void complexImports(){
+        var semantics = test("symboltable/complexImports.jmm", false);
+        assertEquals(2, semantics.getSymbolTable().getImports().size());
+    }
+
+    @Test
     public void ClassAndSuper() {
         var semantics = test("symboltable/Super.jmm", false);
         assertEquals("Super", semantics.getSymbolTable().getClassName());

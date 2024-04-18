@@ -55,7 +55,7 @@ program
     ;
 
 importDeclaration
-    : IMPORT importName=ID ( DOT extension=ID )* SEMI #ImportDecl
+    : IMPORT importName+=ID ( DOT importName+=ID )* SEMI #ImportDecl
     ;
 
 classDeclaration

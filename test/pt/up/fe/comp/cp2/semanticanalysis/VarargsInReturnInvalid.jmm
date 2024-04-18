@@ -1,4 +1,5 @@
-import A;
+import foo.A;
+import bar.A;
 
 class VarargsReturn {
     public int[] foo(int[] a, int [] b){
