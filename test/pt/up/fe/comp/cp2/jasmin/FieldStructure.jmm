@@ -1,0 +1,12 @@
+import java.lang.Integer;
+
+class Test {
+
+    Integer a;
+
+    public static void main(String[] args) {
+
+
+    }
+
+}

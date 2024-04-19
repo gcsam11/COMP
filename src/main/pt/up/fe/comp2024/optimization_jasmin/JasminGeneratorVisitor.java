@@ -102,8 +102,31 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 case "boolean":
                     auxfield = "Z";
                     break;
+                default:
+                    var importNode = classDecl.getParent();
+                    var classes="";
+                    while(!importNode.getKind().equals("Program")) {
+                        importNode = importNode.getParent();
+                    }
+
+                    var importNodes = importNode.getChildren();
+                    for(var anImport: importNodes) {
+                        classes = anImport.get("importName")
+                                .replace("[", "")
+                                .replace("]", "")
+                                .replace(" ", "")
+                                .replace(",","/");
+
+                        var auxLast = classes.split("/");
+
+                        if(Objects.equals(auxLast[auxLast.length - 1], fieldType)) {
+                            auxfield = classes;
+                            break;
+                        }
+                    }
+                    break;
             }
-            code.append(".field "+fieldName+" "+auxfield).append(NL);
+            code.append(".field "+fieldName+" L"+auxfield+";").append(NL);
 
         }
 
