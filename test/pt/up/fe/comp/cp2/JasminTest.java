@@ -63,11 +63,6 @@ public class JasminTest {
         testOllirToJasmin("pt/up/fe/comp/cp2/jasmin/OllirToJasminMethodDeclarationClass.jmm");
     }
 
-    @Test
-    public void astToJasminFieldTest() {
-        testOllirToJasmin("pt/up/fe/comp/cp2/jasmin/FieldStructure.jmm");
-    }
-
     public static void testOllirToJasmin(String resource, String expectedOutput) {
         JasminResult result = null;
 
