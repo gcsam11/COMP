@@ -248,10 +248,10 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         }
         code.append(")");
         switch(memberAccessType.getName()){
-            case "Integer":
+            case "Integer", "int":
                 code.append("I");
                 break;
-            case "Boolean":
+            case "Boolean", "boolean":
                 code.append("Z");
                 break;
             default:

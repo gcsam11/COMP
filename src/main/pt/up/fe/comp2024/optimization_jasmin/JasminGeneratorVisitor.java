@@ -297,7 +297,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 var memberAccessType = TypeUtils.getExprType(assignStmt.getChild(1), table, currentMethod);
                 if(isField)
                     code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
-                else if(memberAccessType.getName().equals("Integer") || memberAccessType.getName().equals("Boolean"))
+                else if(memberAccessType.getName().equals("Integer") || memberAccessType.getName().equals("Boolean") || TypeUtils.checkIfTypeIsPrimitive(memberAccessType))
                     code.append("istore ").append(reg).append(NL);
                 else
                     code.append("astore ").append(reg).append(NL);
