@@ -1,0 +1,9 @@
+import java.lang.Integer;
+
+class Test {
+
+	public static void main(String[] args) {
+    	Integer.bitCount(10);
+	}
+
+}

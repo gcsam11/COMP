@@ -185,13 +185,13 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             }
 
             if(idType.getName().equals(TypeUtils.getIntTypeName())){
-                code.append("iload ").append(currentRegisters.get(child.get("value"))).append(NL);
+                code.append("iload ").append(reg).append(NL);
             }
             else if(idType.getName().equals(TypeUtils.getBooleanTypeName())){
-                code.append("iload ").append(currentRegisters.get(child.get("value"))).append(NL);
+                code.append("iload ").append(reg).append(NL);
             }
             else{
-                code.append("aload ").append(currentRegisters.get(child.get("value"))).append(NL);
+                code.append("aload ").append(reg).append(NL);
             }
         }
         if(table.getMethods().contains(funcName)){
@@ -200,13 +200,28 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         else{
             code.append("invokestatic ");
         }
+
         if(isPrimitive){
-            code.append(table.getClassName());
+            code.append(table.getClassName()).append("/");
         }
         else{
-            code.append(memberAccessType.getName());
+            var importNode = memberAccessOp.getParent();
+
+            while(!importNode.getKind().equals("Program")) {
+                importNode = importNode.getParent();
+            }
+
+            importNode = importNode.getChild(0);
+
+            var classes = importNode.get("importName")
+                    .replace("[", "")
+                    .replace("]", "")
+                    .replace(" ", "")
+                    .replace(",","/");
+
+            code.append(classes).append("/");
         }
-        code.append("/").append(funcName).append("(");
+        code.append(funcName).append("(");
         for(var child : memberAccessOp.getChildren().subList(1, memberAccessOp.getNumChildren())){
             var idType = TypeUtils.getExprType(child, table, currentMethod);
             if(idType.getName().equals(TypeUtils.getIntTypeName())){
