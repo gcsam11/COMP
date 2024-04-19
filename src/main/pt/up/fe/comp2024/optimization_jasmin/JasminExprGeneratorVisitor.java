@@ -110,7 +110,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         };
 
         //Added this because binary expression does not store the variable in the stack before running the code
-        if (!binaryExpr.getParent().getKind().equals("ParenOp")) {
+        if (!binaryExpr.getParent().getKind().equals("ParenOp")  && !binaryExpr.getParent().getKind().equals("BinaryExpr")) {
             code.append("ldc 0").append(NL);
             code.append("istore ").append(currentRegisters.get(binaryExpr.getParent().getChild(0).get("value"))).append(NL);
         }
@@ -118,7 +118,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         code.append(op).append(NL);
 
 
-        if (!binaryExpr.getParent().getKind().equals("ParenOp")) {
+        if (!binaryExpr.getParent().getKind().equals("ParenOp") && !binaryExpr.getParent().getKind().equals("BinaryExpr")) {
             // store and load in next register
             var name = binaryExpr.getParent().getChild(0).get("value");
             var reg = currentRegisters.get(name);
