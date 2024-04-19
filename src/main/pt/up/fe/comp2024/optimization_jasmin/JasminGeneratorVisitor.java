@@ -69,8 +69,21 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         // generate super class if it exists
         if(!Objects.equals(table.getSuper(), null)){
-            code.append(".super ").append(table.getSuper()).append(NL);
-            superClass = "invokespecial " + table.getSuper() +"/<init>()V\n";
+            var program = classDecl.getParent();
+            var classes = "";
+            for(var imports: program.getChildren(Kind.IMPORT_DECL.getNodeName())){
+                if(imports.get("importName").contains(table.getSuper())){
+                    var importName = imports.get("importName");
+                    classes = importName
+                            .replace("[", "")
+                            .replace("]", "")
+                            .replace(" ", "")
+                            .replace(",","/");
+                    break;
+                }
+            }
+            code.append(".super ").append(classes).append(NL);
+            superClass = "invokespecial " + classes +"/<init>()V\n";
         }
         else{
             code.append(".super java/lang/Object").append(NL);

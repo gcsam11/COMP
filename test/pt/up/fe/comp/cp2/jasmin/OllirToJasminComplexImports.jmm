@@ -1,7 +1,7 @@
 import A.B;
 import java.lang.Integer;
 
-class Test {
+class OllirToJasminComplexImports extends B{
 
 	public static void main(String[] args) {
     	int a;

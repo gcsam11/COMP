@@ -8,7 +8,9 @@ class Test {
 
 	public void foo(){
         Test a;
+        int b;
         a = this;
+        b = a.bar();
 	}
 
 	public int bar(){
