@@ -28,4 +28,13 @@ public class AppTest {
         assertEquals("30", result.strip());
     }
 
+    @Test
+    public void addMultVars() {
+        var code = SpecsIo.getResource("pt/up/fe/comp/cp2/apps/addMultVars.jmm");
+        var jasminResult = TestUtils.backend(code, Collections.emptyMap());
+        System.out.println(jasminResult.getJasminCode());
+        var result = TestUtils.runJasmin(jasminResult.getJasminCode(), Collections.emptyMap());
+        assertEquals("4", result.strip());
+    }
+
 }
