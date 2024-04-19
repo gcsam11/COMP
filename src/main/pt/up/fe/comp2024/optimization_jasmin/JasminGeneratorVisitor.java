@@ -287,6 +287,9 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         String literalType = assignStmt.getChild(1).getKind();
         switch (literalType) {
+            case "NewOpObject":
+                code.append("astore ").append(reg).append(NL);
+                break;
             case "IntegerLiteral", "BooleanLiteral":
                 if(isField)
                     code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
@@ -302,6 +305,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 else
                     code.append("astore ").append(reg).append(NL);
                 break;
+
         }
 
 

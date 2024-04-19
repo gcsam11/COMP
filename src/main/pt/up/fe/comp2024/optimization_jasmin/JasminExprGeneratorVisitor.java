@@ -42,9 +42,6 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
     }
 
     private Void visitIntegerLiteral(JmmNode integerLiteral, StringBuilder code) {
-        if(integerLiteral.getParent().getKind().equals(Kind.MEMBER_ACCESS_OP.getNodeName())){
-            return null;
-        }
         code.append("ldc ").append(integerLiteral.get("value")).append(NL);
         return null;
     }
@@ -151,13 +148,45 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             currentRegisters.put(name, reg);
         }
 
-        code.append("new ").append(newOp.get("value")).append(NL);
-        code.append("dup" + NL);
-        code.append("astore ").append(reg).append(NL);
-        code.append("aload ").append(reg).append(NL);
-        code.append("invokespecial ").append(newOp.get("value")).append("/<init>()V").append(NL);
-        code.append("pop").append(NL); // remove the reference from the stack
-        return null;
+        var program = newOp.getParent();
+
+        while(!program.getKind().equals("Program")) {
+            program = program.getParent();
+        }
+
+        boolean isImport = false;
+        var importName = "";
+
+        for(var child: program.getChildren(Kind.IMPORT_DECL)){
+            var iName = child.get("importName");
+            var importNameList = iName.substring(1, iName.length() - 1).split(", ");
+            for(var importNameElement: importNameList){
+                if(importNameElement.equals(newOp.get("value"))){
+                    isImport = true;
+                    importName = iName;
+                }
+            }
+        }
+
+        if(isImport){
+            var classes = importName
+                    .replace("[", "")
+                    .replace("]", "")
+                    .replace(" ", "")
+                    .replace(",","/");
+            code.append("new ").append(classes).append(NL);
+            code.append("dup" + NL);
+            code.append("invokespecial ").append(classes).append("/<init>()V").append(NL);
+            return null;
+        }
+        else{
+            code.append("new ").append(newOp.get("value")).append(NL);
+            code.append("dup" + NL);
+            code.append("astore ").append(reg).append(NL);
+            code.append("aload ").append(reg).append(NL);
+            code.append("invokespecial ").append(newOp.get("value")).append("/<init>()V").append(NL);
+            return null;
+        }
     }
 
     private Void visitMemberAccessOp(JmmNode memberAccessOp, StringBuilder code) {
@@ -173,8 +202,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             reg = currentRegisters.size();
             currentRegisters.put(name, reg);
         }
-        // aload object if it is a class method
-        if(isPrimitive && !memberAccessOp.getChild(0).getKind().equals("This")){
+        // aload object if it is a class method and not directly from import
+        if(!memberAccessOp.getChild(0).getKind().equals("This") && !table.getImports().contains(memberAccessOp.getChild(0).get("value"))){
             code.append("aload ").append(reg).append(NL);
         }
         // load parameters
