@@ -184,14 +184,16 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                 currentRegisters.put(name, reg);
             }
 
-            if(idType.getName().equals(TypeUtils.getIntTypeName())){
-                code.append("iload ").append(reg).append(NL);
-            }
-            else if(idType.getName().equals(TypeUtils.getBooleanTypeName())){
-                code.append("iload ").append(reg).append(NL);
-            }
-            else{
-                code.append("aload ").append(reg).append(NL);
+            if(!child.getKind().equals("IntegerLiteral") && !child.getKind().equals("BooleanLiteral")) {
+                if(idType.getName().equals(TypeUtils.getIntTypeName())){
+                    code.append("iload ").append(currentRegisters.get(child.get("value"))).append(NL);
+                }
+                else if(idType.getName().equals(TypeUtils.getBooleanTypeName())){
+                    code.append("iload ").append(currentRegisters.get(child.get("value"))).append(NL);
+                }
+                else{
+                    code.append("aload ").append(currentRegisters.get(child.get("value"))).append(NL);
+                }
             }
         }
         if(table.getMethods().contains(funcName)){
@@ -221,7 +223,9 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
             code.append(classes).append("/");
         }
+
         code.append(funcName).append("(");
+
         for(var child : memberAccessOp.getChildren().subList(1, memberAccessOp.getNumChildren())){
             var idType = TypeUtils.getExprType(child, table, currentMethod);
             if(idType.getName().equals(TypeUtils.getIntTypeName())){
