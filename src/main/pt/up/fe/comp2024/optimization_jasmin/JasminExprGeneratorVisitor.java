@@ -3,6 +3,7 @@ package pt.up.fe.comp2024.optimization_jasmin;
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.ast.JmmNode;
 import pt.up.fe.comp.jmm.ast.PostorderJmmVisitor;
+import pt.up.fe.comp2024.ast.Kind;
 import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 import pt.up.fe.specs.util.exceptions.NotImplementedException;
@@ -41,6 +42,9 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
     }
 
     private Void visitIntegerLiteral(JmmNode integerLiteral, StringBuilder code) {
+        if(integerLiteral.getParent().getKind().equals(Kind.MEMBER_ACCESS_OP.getNodeName())){
+            return null;
+        }
         code.append("ldc ").append(integerLiteral.get("value")).append(NL);
         return null;
     }
