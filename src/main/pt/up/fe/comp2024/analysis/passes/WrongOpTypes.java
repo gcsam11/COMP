@@ -40,11 +40,11 @@ public class WrongOpTypes extends AnalysisVisitor {
             if(binaryExpr.get("op").equals("<") && leftType.getName().equals(TypeUtils.getIntTypeName()) && rightType.getName().equals(leftType.getName()) && !leftType.isArray() && !rightType.isArray()){
                 return null;
             }
-            else if(leftType.getName().equals(opType.getName()) && rightType.getName().equals(opType.getName()) && !leftType.isArray() && !rightType.isArray()){
+            else if(TypeUtils.compareTypes(leftType, rightType) && leftType.getName().equals(opType.getName())){
                 return null;
             }
             else{
-                var message = String.format("'%s' and '%s' types in operation '%s' are incompatible.", binaryExpr.getChild(0).get("value"), binaryExpr.getChild(1).get("value"), binaryExpr.get("op"));
+                var message = String.format("'%s' and '%s' types in operation '%s' are incompatible.", binaryExpr.getChild(0), binaryExpr.getChild(1), binaryExpr.get("op"));
                 addReport(Report.newError(
                         Stage.SEMANTIC,
                         NodeUtils.getLine(binaryExpr),

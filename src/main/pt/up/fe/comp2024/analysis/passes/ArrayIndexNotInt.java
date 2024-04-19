@@ -33,7 +33,7 @@ public class ArrayIndexNotInt extends AnalysisVisitor {
 
         var arrayIdExpr = arrayAccessOp.getChild(1);
 
-        Type type = TypeUtils.getExprType(arrayIdExpr, table, currentMethod); // TODO - arrayIdExpr could be an INT or a BINARY_EXPR
+        Type type = TypeUtils.getExprType(arrayIdExpr, table, currentMethod);
 
         if (type.getName().equals(TypeUtils.getIntTypeName())){
             return null;

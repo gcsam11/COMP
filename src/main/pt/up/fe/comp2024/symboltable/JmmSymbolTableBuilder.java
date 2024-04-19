@@ -13,9 +13,14 @@ public class JmmSymbolTableBuilder {
 
     public static JmmSymbolTable build(JmmNode root) {
 
-        var imports = root.getChildren(Kind.IMPORT_DECL).stream()
-                .map(importNode -> importNode.get("importName"))
-                .toList();
+
+        List<String> imports = new ArrayList<>();
+        var importsAux = root.getChildren(Kind.IMPORT_DECL);
+        for(var i : importsAux){
+            var importName = i.get("ID");
+            imports.add(importName);
+        }
+
         var classDecl = root.getChildren(Kind.CLASS_DECL).get(0);
         var superClass = classDecl.getOptional("extension").orElse(null);
         var fields = classDecl.getChildren(Kind.VAR_DECL).stream()

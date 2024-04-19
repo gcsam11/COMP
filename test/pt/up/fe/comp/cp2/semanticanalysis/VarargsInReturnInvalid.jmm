@@ -1,0 +1,10 @@
+import foo.A;
+import bar.A;
+
+class VarargsReturn {
+    public int[] foo(int[] a, int [] b){
+        a[0] = 1;
+
+        return [true, true, false];
+    }
+}

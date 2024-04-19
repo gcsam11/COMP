@@ -1,5 +1,6 @@
 package pt.up.fe.comp2024.analysis.passes;
 
+import pt.up.fe.comp.jmm.analysis.table.Symbol;
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.JmmNode;
@@ -11,6 +12,8 @@ import pt.up.fe.comp2024.ast.NodeUtils;
 import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -22,14 +25,97 @@ public class WrongInit extends AnalysisVisitor {
     private String currentMethod;
     @Override
     public void buildVisitor() {
+        addVisit(Kind.CLASS_DECL, this::visitClassDecl);
         addVisit(Kind.METHOD_DECL, this::visitMethodDecl);
         addVisit(Kind.ASSIGN_STMT, this::visitAssignStmt);
+        addVisit(Kind.VAR_DECL, this::visitVarDecl);
         addVisit(Kind.LENGTH_OP, this::visitLengthOp);
+    }
+
+    // check duplicates
+    private Void visitClassDecl(JmmNode classDecl, SymbolTable table) {
+        int i = 0;
+        for(var method : table.getMethods()){
+            if(table.getMethods().subList(i + 1, table.getMethods().size()).contains(method)){
+                var message = String.format("Method '%s' is duplicated", method);
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(classDecl),
+                        NodeUtils.getColumn(classDecl),
+                        message,
+                        null)
+                );
+            }
+            i++;
+        }
+
+        i = 0;
+        for(var field : table.getFields()){
+            if(table.getFields().subList(i + 1, table.getFields().size()).contains(field)){
+                var message = String.format("Field '%s' is duplicated", field.getName());
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(classDecl),
+                        NodeUtils.getColumn(classDecl),
+                        message,
+                        null)
+                );
+            }
+            i++;
+        }
+
+        i = 0;
+        // strip dots from import names and get the last part of the name
+        for(var var : table.getImports()){
+            if(table.getImports().subList(i + 1, table.getImports().size()).contains(var)){
+                var message = String.format("Import '%s' is duplicated", var);
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(classDecl),
+                        NodeUtils.getColumn(classDecl),
+                        message,
+                        null)
+                );
+            }
+            i++;
+        }
+
+        return null;
     }
 
     // check if method name is MAIN, and it's declaration is correct
     private Void visitMethodDecl(JmmNode method, SymbolTable table) {
         currentMethod = method.get("name");
+
+        int i = 0;
+        for(var param : table.getParameters(currentMethod)){
+            if(table.getParameters(currentMethod).subList(i + 1, table.getParameters(currentMethod).size()).contains(param)){
+                var message = String.format("Parameter '%s' is duplicated", param.getName());
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(method),
+                        NodeUtils.getColumn(method),
+                        message,
+                        null)
+                );
+            }
+            i++;
+        }
+
+        i = 0;
+        for(var var : table.getLocalVariables(currentMethod)){
+            if(table.getLocalVariables(currentMethod).subList(i + 1, table.getLocalVariables(currentMethod).size()).contains(var)){
+                var message = String.format("Variable '%s' is duplicated", var.getName());
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(method),
+                        NodeUtils.getColumn(method),
+                        message,
+                        null)
+                );
+            }
+            i++;
+        }
 
         if(currentMethod.equals("main")){
             var parameters = method.getChildren(Kind.PARAM_DECL);
@@ -121,6 +207,30 @@ public class WrongInit extends AnalysisVisitor {
     private Void visitAssignStmt(JmmNode assignStmt, SymbolTable table) {
         SpecsCheck.checkNotNull(currentMethod, () -> "Expected current method to be set");
 
+        if(!assignStmt.getChild(0).getKind().equals(Kind.IDENTIFIER.getNodeName())
+                && !assignStmt.getChild(0).getKind().equals(Kind.ARRAY_ACCESS_OP.getNodeName())){
+            var message = "Left side of assignment statement should be an identifier";
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(assignStmt),
+                    NodeUtils.getColumn(assignStmt),
+                    message,
+                    null)
+            );
+        }
+        if(assignStmt.getChild(0).getKind().equals(Kind.ARRAY_ACCESS_OP.getNodeName())){
+            if(assignStmt.getChild(0).getDescendants(Kind.IDENTIFIER).size() == 0){
+                var message = "Left side of assignment statement should be an identifier";
+                addReport(Report.newError(
+                        Stage.SEMANTIC,
+                        NodeUtils.getLine(assignStmt),
+                        NodeUtils.getColumn(assignStmt),
+                        message,
+                        null)
+                );
+            }
+        }
+
         try {
             Type idType = TypeUtils.getExprType(assignStmt.getChild(0), table, currentMethod);
             Type assignType = TypeUtils.getExprType(assignStmt.getChild(1), table, currentMethod);
@@ -147,6 +257,23 @@ public class WrongInit extends AnalysisVisitor {
             );
         }
 
+        return null;
+    }
+
+    private Void visitVarDecl(JmmNode varDeclaration, SymbolTable table){
+        try{
+            TypeUtils.getExprType(varDeclaration, table, currentMethod);
+        }
+        catch (RuntimeException e) {
+            var message = String.format("'%s'", e.getMessage());
+            addReport(Report.newError(
+                    Stage.SEMANTIC,
+                    NodeUtils.getLine(varDeclaration),
+                    NodeUtils.getColumn(varDeclaration),
+                    message,
+                    null)
+            );
+        }
         return null;
     }
 

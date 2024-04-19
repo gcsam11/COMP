@@ -44,6 +44,7 @@ public class TypeUtils {
             case MEMBER_ACCESS_OP -> getMemberAccessType(expr, table, currentMethod);
             case THIS -> new Type(table.getClassName(), false);
             case LENGTH_OP -> new Type(INT_TYPE_NAME, false);
+            case VAR_DECL -> getIdentifierType(expr, table, currentMethod);
             default -> throw new UnsupportedOperationException("Can't compute type for expression kind '" + kind + "'");
         };
 
@@ -63,7 +64,14 @@ public class TypeUtils {
 
 
     private static Type getIdentifierType(JmmNode idExpr, SymbolTable table, String currentMethod) {
-        var id = idExpr.get("value");
+        var id2 = "";
+        if(idExpr.getKind().equals(Kind.VAR_DECL.getNodeName())){
+            id2 = idExpr.get("varName");
+        }
+        else{
+            id2 = idExpr.get("value");
+        }
+        var id = id2;
 
         // Var is an import, return
         if(table.getImports().stream()
@@ -74,11 +82,15 @@ public class TypeUtils {
         // Var is a field, return
         if (table.getFields().stream()
                 .anyMatch(param -> param.getName().equals(id))) {
-            return table.getFields().stream()
+            var type = table.getFields().stream()
                     .filter(param -> param.getName().equals(id))
                     .findFirst()
                     .get()
                     .getType();
+            if(type.getName().equals("int...")){
+                throw new RuntimeException("Varargs as field is not allowed");
+            }
+            return type;
         }
 
         // Var is a parameter, return
@@ -94,11 +106,15 @@ public class TypeUtils {
         // Var is a declared variable, return
         if (table.getLocalVariables(currentMethod).stream()
                 .anyMatch(varDecl -> varDecl.getName().equals(id))) {
-            return table.getLocalVariables(currentMethod).stream()
+            var type = table.getLocalVariables(currentMethod).stream()
                     .filter(varDecl -> varDecl.getName().equals(id))
                     .findFirst()
                     .get()
                     .getType();
+            if(type.getName().equals("int...")){
+                throw new RuntimeException("Varargs as local variable is not allowed");
+            }
+            return type;
         }
 
         throw new RuntimeException("Undeclared symbol '" + id + "'.");
@@ -170,5 +186,9 @@ public class TypeUtils {
 
     public static boolean checkIfTypeIsPrimitive(Type type){
         return type.getName().equals(INT_TYPE_NAME) || type.getName().equals(BOOLEAN_TYPE_NAME);
+    }
+
+    public static boolean compareTypes(Type type1, Type type2){
+        return (type1.getName().equals(type2.getName()) && type1.isArray() == type2.isArray());
     }
 }
