@@ -7,11 +7,9 @@ import pt.up.fe.comp2024.ast.Kind;
 import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 import pt.up.fe.specs.util.exceptions.NotImplementedException;
-import pt.up.fe.specs.util.utilities.StringLines;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilder, Void> {
 
@@ -283,8 +281,22 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             else if(idType.getName().equals(TypeUtils.getBooleanTypeName())){
                 code.append("Z");
             }
-            else{
-                code.append("V");
+            else if(table.getImports().contains(idType.getName())){
+                var program = memberAccessOp.getParent();
+                while(!program.getKind().equals("Program")) {
+                    program = program.getParent();
+                }
+                var classes = "";
+                for(var imports: program.getDescendants(Kind.IMPORT_DECL)){
+                    if(imports.get("importName").contains(memberAccessType.getName())){
+                        classes = imports.get("importName")
+                                .replace("[", "")
+                                .replace("]", "")
+                                .replace(" ", "")
+                                .replace(",","/");
+                    }
+                }
+                code.append("L").append(classes).append(";");
             }
         }
         code.append(")");
@@ -295,9 +307,30 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             case "Boolean", "boolean":
                 code.append("Z");
                 break;
-            default:
+            case "Void", "void":
                 code.append("V");
                 break;
+            default:
+                var program = memberAccessOp.getParent();
+                while(!program.getKind().equals("Program")) {
+                    program = program.getParent();
+                }
+                var classes = "";
+                for(var imports: program.getDescendants(Kind.IMPORT_DECL)){
+                    if(imports.get("importName").contains(memberAccessType.getName())){
+                        classes = imports.get("importName")
+                                .replace("[", "")
+                                .replace("]", "")
+                                .replace(" ", "")
+                                .replace(",","/");
+                    }
+                }
+                if(table.getImports().contains(memberAccessOp.getChild(0).get("value"))){
+                    code.append("V");
+                }
+                else{
+                    code.append("L").append(classes).append(";");
+                }
         }
         code.append(NL);
 

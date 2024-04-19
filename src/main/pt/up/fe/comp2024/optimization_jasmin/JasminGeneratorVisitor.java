@@ -211,7 +211,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                         var auxLast = classes.split("/");
 
                         if(Objects.equals(auxLast[auxLast.length - 1],param.getChild(0).get("typeName"))) {
-                            code.append("[L").append(classes).append(";");
+                            code.append("L").append(classes).append(";");
                             break;
                         }
                     }
