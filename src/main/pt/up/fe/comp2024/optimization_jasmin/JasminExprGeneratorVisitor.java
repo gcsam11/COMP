@@ -59,6 +59,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
     private Void visitIdentifier(JmmNode idExpr, StringBuilder code) {
         var name = idExpr.get("value");
+        var type = TypeUtils.getExprType(idExpr, table, currentMethod);
         var fieldType = "empty";
         boolean isField = false;
         boolean isFunc = false;
@@ -90,7 +91,10 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             code.append("istore ").append(identifierBeingAssigned);
         } else {
             if(code != null)
-                code.append("iload ").append(reg).append(NL);
+                if(TypeUtils.checkIfTypeIsPrimitive(type))
+                    code.append("iload ").append(reg).append(NL);
+                else
+                    code.append("aload ").append(reg).append(NL);
         }
 
 
@@ -305,7 +309,13 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
     }
 
     private Void visitThisExpr(JmmNode thisExpr, StringBuilder code) {
-        code.append("aload_0").append(NL);
+        if(thisExpr.getParent().getKind().equals("AssignStmt")){
+            code.append("new ").append(table.getClassName()).append(NL);
+            code.append("dup").append(NL);
+        }
+        else{
+            code.append("aload_0").append(NL);
+        }
         return null;
     }
 

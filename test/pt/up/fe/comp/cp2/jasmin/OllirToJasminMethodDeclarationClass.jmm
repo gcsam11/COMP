@@ -6,14 +6,13 @@ class Test {
 
 	}
 
-	public io foo(){
-        io a;
-        a = new io();
-        return a;
+	public void foo(){
+        Test a;
+        a = this;
 	}
 
 	public int bar(){
-	    return 1;   
+	    return 1;
 	}
 
 }
