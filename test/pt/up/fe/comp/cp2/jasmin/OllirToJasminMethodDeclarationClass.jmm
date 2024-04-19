@@ -1,0 +1,19 @@
+import io;
+
+class Test {
+
+	public static void main(String[] args) {
+
+	}
+
+	public io foo(){
+        io a;
+        a = new io();
+        return a;
+	}
+
+	public int bar(){
+	    return 1;   
+	}
+
+}

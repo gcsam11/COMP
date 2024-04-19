@@ -253,7 +253,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         // store value in top of the stack in destination
         var lhs = assignStmt.getChild(0);
-        SpecsCheck.checkArgument(lhs.isInstance("Identifier"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
+        SpecsCheck.checkArgument(lhs.isInstance("Identifier") || lhs.isInstance("This"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
 
         var destName = lhs.get("value");
 
@@ -287,6 +287,8 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         String literalType = assignStmt.getChild(1).getKind();
         switch (literalType) {
+            case "This":
+                code.append("invokespecial ").append(table.getClassName()).append("/<init>()V").append(NL);
             case "NewOpObject":
                 code.append("astore ").append(reg).append(NL);
                 break;
@@ -328,6 +330,14 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             case "void":
                 code.append("return").append(NL);
                 break;
+            default:
+                code.append("L");
+                // get program Node
+                var program = returnStmt.getParent();
+                while(program.getParent().getKind().equals(Kind.PROGRAM.getNodeName())){
+                    program = program.getParent();
+                }
+
         }
 
         return code.toString();
