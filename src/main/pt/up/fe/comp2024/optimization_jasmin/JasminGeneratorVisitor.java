@@ -145,6 +145,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         else
             code.append("\n.method ").append(modifier).append(methodName).append("(");
 
+        String classes = "empty";
         for(var param : methodDecl.getChildren("ParamDecl")){
             switch(param.getChild(0).getKind()){
                 case "IntType":
@@ -155,6 +156,29 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                     break;
                 case "StringArrayType":
                     code.append("[Ljava/lang/String;");
+                    break;
+                default:
+                    var importNode = methodDecl.getParent();
+
+                    while(!importNode.getKind().equals("Program")) {
+                        importNode = importNode.getParent();
+                    }
+
+                    var importNodes = importNode.getChildren();
+                    for(var anImport: importNodes) {
+                        classes = anImport.get("importName")
+                                .replace("[", "")
+                                .replace("]", "")
+                                .replace(" ", "")
+                                .replace(",","/");
+
+                        var auxLast = classes.split("/");
+
+                        if(Objects.equals(auxLast[auxLast.length - 1],param.getChild(0).get("typeName"))) {
+                            code.append("[L").append(classes).append(";");
+                            break;
+                        }
+                    }
                     break;
             }
         }
@@ -173,6 +197,10 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             case "void":
                 code.append(")V").append(NL);
                 break;
+            default:
+                code.append(")L").append(classes).append(";").append(NL);
+                break;
+
         }
 
         // Add limits

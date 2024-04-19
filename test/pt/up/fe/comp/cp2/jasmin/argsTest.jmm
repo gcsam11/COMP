@@ -1,0 +1,19 @@
+import java.lang.Integer;
+
+class Test {
+
+    public static void main(String[] args) {
+
+    }
+
+	public Integer function(int b, Integer number) {
+    	Integer a;
+    	a = new Integer();
+    	return a;
+	}
+
+	public int numberFunc() {
+	    return 1024;
+	}
+
+}

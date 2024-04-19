@@ -1,0 +1,17 @@
+class Test {
+
+    public static void main(String[] args) {
+
+
+    }
+
+	public void function() {
+    	int a;
+    	a = this.numberFunc();
+	}
+
+	public int numberFunc() {
+	    return 1024;
+	}
+
+}
