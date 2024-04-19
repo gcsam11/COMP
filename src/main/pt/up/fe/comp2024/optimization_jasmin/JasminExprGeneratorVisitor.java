@@ -229,8 +229,28 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                 }
             }
         }
-        if(table.getMethods().contains(funcName)){
-            code.append("invokevirtual ");
+        // get Class Node
+        var classNode = memberAccessOp.getParent();
+
+        while(!classNode.getKind().equals(Kind.CLASS_DECL.getNodeName())) {
+            classNode = classNode.getParent();
+        }
+
+        JmmNode methodNode = null;
+
+        for(var method : classNode.getChildren(Kind.METHOD_DECL)){
+            if(method.get("name").equals(funcName)){
+                methodNode = method;
+            }
+        }
+
+        if(methodNode != null){
+            if(Boolean.parseBoolean(methodNode.get("isStatic"))){
+                code.append("invokestatic ");
+            }
+            else{
+                code.append("invokevirtual ");
+            }
         }
         else{
             code.append("invokestatic ");
