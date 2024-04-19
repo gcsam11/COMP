@@ -141,7 +141,10 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
 
     private Void visitNewOpObject(JmmNode newOp, StringBuilder code) {
-        var name = newOp.getParent().getChild(0).get("value");
+        var name = "";
+        if(!newOp.getParent().getKind().equals("ParenOp")){
+            name = newOp.getParent().getChild(0).get("value");
+        }
         var reg = currentRegisters.get(name);
 
         // If no mapping, variable has not been assigned yet, create mapping
@@ -161,7 +164,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
         for(var child: program.getChildren(Kind.IMPORT_DECL)){
             var iName = child.get("importName");
-            var importNameList = iName.substring(1, iName.length() - 1).split(", ");
+            var importName2 = iName.replace("[", "").replace("]", "").replace(" ", "");
+            var importNameList = importName2.split(",");
             for(var importNameElement: importNameList){
                 if(importNameElement.equals(newOp.get("value"))){
                     isImport = true;
