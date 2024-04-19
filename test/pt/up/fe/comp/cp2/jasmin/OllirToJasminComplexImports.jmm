@@ -1,7 +1,7 @@
-import A.B;
+import java.io.BufferedReader;
 import java.lang.Integer;
 
-class Test {
+class Test extends BufferedReader {
 
 	public static void main(String[] args) {
     	int a;

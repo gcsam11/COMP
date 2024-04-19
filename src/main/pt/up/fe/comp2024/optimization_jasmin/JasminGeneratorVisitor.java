@@ -69,8 +69,21 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         // generate super class if it exists
         if(!Objects.equals(table.getSuper(), null)){
-            code.append(".super ").append(table.getSuper()).append(NL);
-            superClass = "invokespecial " + table.getSuper() +"/<init>()V\n";
+            var program = classDecl.getParent();
+            var classes = "";
+            for(var imports: program.getChildren(Kind.IMPORT_DECL.getNodeName())){
+                if(imports.get("importName").contains(table.getSuper())){
+                    var importName = imports.get("importName");
+                    classes = importName
+                            .replace("[", "")
+                            .replace("]", "")
+                            .replace(" ", "")
+                            .replace(",","/");
+                    break;
+                }
+            }
+            code.append(".super ").append(classes).append(NL);
+            superClass = "invokespecial " + classes +"/<init>()V\n";
         }
         else{
             code.append(".super java/lang/Object").append(NL);
@@ -198,9 +211,21 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 code.append(")V").append(NL);
                 break;
             default:
-                code.append(")L").append(classes).append(";").append(NL);
-                break;
-
+                if(table.getImports().contains(returnType.getName())){
+                    var program = methodDecl.getParent().getParent();
+                    for(var imports: program.getChildren(Kind.IMPORT_DECL.getNodeName())){
+                        if(imports.get("importName").contains(returnType.getName())){
+                            var importName = imports.get("importName");
+                            var auxclasses = importName
+                                    .replace("[", "")
+                                    .replace("]", "")
+                                    .replace(" ", "")
+                                    .replace(",","/");
+                            code.append(")L").append(auxclasses).append(";").append(NL);
+                            break;
+                        }
+                    }
+                }
         }
 
         // Add limits
@@ -281,7 +306,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         // store value in top of the stack in destination
         var lhs = assignStmt.getChild(0);
-        SpecsCheck.checkArgument(lhs.isInstance("Identifier"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
+        SpecsCheck.checkArgument(lhs.isInstance("Identifier") || lhs.isInstance("This"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
 
         var destName = lhs.get("value");
 
@@ -315,6 +340,11 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         String literalType = assignStmt.getChild(1).getKind();
         switch (literalType) {
+            case "This":
+                code.append("invokespecial ").append(table.getClassName()).append("/<init>()V").append(NL);
+            case "NewOpObject":
+                code.append("astore ").append(reg).append(NL);
+                break;
             case "IntegerLiteral", "BooleanLiteral":
                 if(isField)
                     code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
@@ -330,6 +360,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 else
                     code.append("astore ").append(reg).append(NL);
                 break;
+
         }
 
 
@@ -352,6 +383,8 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             case "void":
                 code.append("return").append(NL);
                 break;
+            default:
+                code.append("areturn");
         }
 
         return code.toString();
