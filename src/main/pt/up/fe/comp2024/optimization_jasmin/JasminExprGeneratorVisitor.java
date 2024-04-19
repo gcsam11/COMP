@@ -9,6 +9,7 @@ import pt.up.fe.specs.util.exceptions.NotImplementedException;
 import pt.up.fe.specs.util.utilities.StringLines;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilder, Void> {
@@ -68,8 +69,10 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             }
         }
 
-        if(idExpr.getParent().getKind().equals("MemberAccessOp"))
-            isFunc = true;
+        if(idExpr.getParent().getKind().equals("MemberAccessOp")) {
+            return null;
+        }
+
 
         if(fieldType.equals("int"))
             fieldType = "I";
@@ -84,9 +87,6 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             code.append("aload_0").append(NL);
             code.append("getfield ").append(table.getClassName()).append("/").append(name).append(" ").append(fieldType).append(NL);
             code.append("istore ").append(identifierBeingAssigned);
-        }
-        else if(isFunc) {
-            return null;
         } else {
             if(code != null)
                 code.append("iload ").append(reg).append(NL);
@@ -213,15 +213,23 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                 importNode = importNode.getParent();
             }
 
-            importNode = importNode.getChild(0);
+            var importNodes = importNode.getChildren();
+            for(var anImport: importNodes) {
+                var classes = anImport.get("importName")
+                        .replace("[", "")
+                        .replace("]", "")
+                        .replace(" ", "")
+                        .replace(",","/");
 
-            var classes = importNode.get("importName")
-                    .replace("[", "")
-                    .replace("]", "")
-                    .replace(" ", "")
-                    .replace(",","/");
+                var auxLast = classes.split("/");
 
-            code.append(classes).append("/");
+                if(Objects.equals(auxLast[auxLast.length - 1], memberAccessType.getName())) {
+                    code.append(classes).append("/");
+                    break;
+                }
+            }
+
+
         }
 
         code.append(funcName).append("(");
@@ -240,10 +248,10 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         }
         code.append(")");
         switch(memberAccessType.getName()){
-            case "int":
+            case "Integer":
                 code.append("I");
                 break;
-            case "boolean":
+            case "Boolean":
                 code.append("Z");
                 break;
             default:

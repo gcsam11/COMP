@@ -1,9 +1,11 @@
+import A.B;
 import java.lang.Integer;
 
 class Test {
 
 	public static void main(String[] args) {
-    	Integer.bitCount(10);
+    	int a;
+    	a = Integer.bitCount(10);
 	}
 
 }
