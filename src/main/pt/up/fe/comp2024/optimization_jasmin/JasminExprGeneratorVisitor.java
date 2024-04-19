@@ -114,11 +114,6 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             default -> throw new NotImplementedException(binaryExpr.get("op"));
         };
 
-        if(binaryExpr.getChildren(Kind.BINARY_EXPR).size() > 0){
-            code.append(op).append(NL);
-            return null;
-        }
-
         //Added this because binary expression does not store the variable in the stack before running the code
         if (!binaryExpr.getParent().getKind().equals("ParenOp")  && !binaryExpr.getParent().getKind().equals("BinaryExpr")) {
             code.append("ldc 0").append(NL);
