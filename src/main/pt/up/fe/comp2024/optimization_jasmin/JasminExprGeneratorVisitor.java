@@ -7,11 +7,9 @@ import pt.up.fe.comp2024.ast.Kind;
 import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 import pt.up.fe.specs.util.exceptions.NotImplementedException;
-import pt.up.fe.specs.util.utilities.StringLines;
 
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilder, Void> {
 
@@ -255,7 +253,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                         .replace(",","/");
 
                 var auxLast = classes.split("/");
-
+                System.out.println(classes);
                 if(Objects.equals(auxLast[auxLast.length - 1], memberAccessType.getName())) {
                     code.append(classes).append("/");
                     break;
