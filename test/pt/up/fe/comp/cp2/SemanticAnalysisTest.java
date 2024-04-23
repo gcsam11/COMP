@@ -289,6 +289,14 @@ public class SemanticAnalysisTest {
         TestUtils.noErrors(result);
         System.out.println(result.getReports());
     }
+
+    @Test
+    public void OllirToJasminComplexImports() {
+        var result = TestUtils
+                .analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/OllirToJasminComplexImports.jmm"));
+        TestUtils.noErrors(result);
+        System.out.println(result.getReports());
+    }
 }
 
 
