@@ -57,6 +57,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
     private Void visitIdentifier(JmmNode idExpr, StringBuilder code) {
         var name = idExpr.get("value");
+        var type = TypeUtils.getExprType(idExpr, table, currentMethod);
         var fieldType = "empty";
         boolean isField = false;
         boolean isFunc = false;
@@ -88,7 +89,10 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             code.append("istore ").append(identifierBeingAssigned);
         } else {
             if(code != null)
-                code.append("iload ").append(reg).append(NL);
+                if(TypeUtils.checkIfTypeIsPrimitive(type))
+                    code.append("iload ").append(reg).append(NL);
+                else
+                    code.append("aload ").append(reg).append(NL);
         }
 
 
@@ -227,11 +231,15 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                 }
             }
         }
-        if(table.getMethods().contains(funcName)){
+
+        if(memberAccessOp.getChild(0).getKind().equals("This")){
             code.append("invokevirtual ");
         }
-        else{
+        else if(table.getImports().contains(memberAccessType.getName()) || table.getMethods().contains(memberAccessType.getName())){
             code.append("invokestatic ");
+        }
+        else{
+            code.append("invokevirtual ");
         }
 
         if(isPrimitive){
@@ -273,8 +281,22 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             else if(idType.getName().equals(TypeUtils.getBooleanTypeName())){
                 code.append("Z");
             }
-            else{
-                code.append("V");
+            else if(table.getImports().contains(idType.getName())){
+                var program = memberAccessOp.getParent();
+                while(!program.getKind().equals("Program")) {
+                    program = program.getParent();
+                }
+                var classes = "";
+                for(var imports: program.getDescendants(Kind.IMPORT_DECL)){
+                    if(imports.get("importName").contains(memberAccessType.getName())){
+                        classes = imports.get("importName")
+                                .replace("[", "")
+                                .replace("]", "")
+                                .replace(" ", "")
+                                .replace(",","/");
+                    }
+                }
+                code.append("L").append(classes).append(";");
             }
         }
         code.append(")");
@@ -285,9 +307,30 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             case "Boolean", "boolean":
                 code.append("Z");
                 break;
-            default:
+            case "Void", "void":
                 code.append("V");
                 break;
+            default:
+                var program = memberAccessOp.getParent();
+                while(!program.getKind().equals("Program")) {
+                    program = program.getParent();
+                }
+                var classes = "";
+                for(var imports: program.getDescendants(Kind.IMPORT_DECL)){
+                    if(imports.get("importName").contains(memberAccessType.getName())){
+                        classes = imports.get("importName")
+                                .replace("[", "")
+                                .replace("]", "")
+                                .replace(" ", "")
+                                .replace(",","/");
+                    }
+                }
+                if(table.getImports().contains(memberAccessOp.getChild(0).get("value"))){
+                    code.append("V");
+                }
+                else{
+                    code.append("L").append(classes).append(";");
+                }
         }
         code.append(NL);
 
@@ -299,7 +342,13 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
     }
 
     private Void visitThisExpr(JmmNode thisExpr, StringBuilder code) {
-        code.append("aload_0").append(NL);
+        if(thisExpr.getParent().getKind().equals("AssignStmt")){
+            code.append("new ").append(table.getClassName()).append(NL);
+            code.append("dup").append(NL);
+        }
+        else{
+            code.append("aload_0").append(NL);
+        }
         return null;
     }
 

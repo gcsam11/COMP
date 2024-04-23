@@ -45,6 +45,7 @@ public class TypeUtils {
             case THIS -> new Type(table.getClassName(), false);
             case LENGTH_OP -> new Type(INT_TYPE_NAME, false);
             case VAR_DECL -> getIdentifierType(expr, table, currentMethod);
+            case PAREN_OP -> getExprType(expr.getChild(0), table, currentMethod);
             default -> throw new UnsupportedOperationException("Can't compute type for expression kind '" + kind + "'");
         };
 
