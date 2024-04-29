@@ -261,7 +261,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                         .replace(",","/");
 
                 var auxLast = classes.split("/");
-
+                System.out.println(classes);
                 if(Objects.equals(auxLast[auxLast.length - 1], memberAccessType.getName())) {
                     code.append(classes).append("/");
                     break;

@@ -74,6 +74,32 @@ public class TypeUtils {
         }
         var id = id2;
 
+        if(currentMethod != null){
+            // Var is a parameter, return
+            if (table.getParameters(currentMethod).stream()
+                    .anyMatch(param -> param.getName().equals(id))) {
+                return table.getParameters(currentMethod).stream()
+                        .filter(param -> param.getName().equals(id))
+                        .findFirst()
+                        .get()
+                        .getType();
+            }
+
+            // Var is a declared variable, return
+            if (table.getLocalVariables(currentMethod).stream()
+                    .anyMatch(varDecl -> varDecl.getName().equals(id))) {
+                var type = table.getLocalVariables(currentMethod).stream()
+                        .filter(varDecl -> varDecl.getName().equals(id))
+                        .findFirst()
+                        .get()
+                        .getType();
+                if(type.getName().equals("int...")){
+                    throw new RuntimeException("Varargs as local variable is not allowed");
+                }
+                return type;
+            }
+        }
+
         // Var is an import, return
         if(table.getImports().stream()
                 .anyMatch(importDecl -> importDecl.equals(id))) {
@@ -90,30 +116,6 @@ public class TypeUtils {
                     .getType();
             if(type.getName().equals("int...")){
                 throw new RuntimeException("Varargs as field is not allowed");
-            }
-            return type;
-        }
-
-        // Var is a parameter, return
-        if (table.getParameters(currentMethod).stream()
-                .anyMatch(param -> param.getName().equals(id))) {
-            return table.getParameters(currentMethod).stream()
-                    .filter(param -> param.getName().equals(id))
-                    .findFirst()
-                    .get()
-                    .getType();
-        }
-
-        // Var is a declared variable, return
-        if (table.getLocalVariables(currentMethod).stream()
-                .anyMatch(varDecl -> varDecl.getName().equals(id))) {
-            var type = table.getLocalVariables(currentMethod).stream()
-                    .filter(varDecl -> varDecl.getName().equals(id))
-                    .findFirst()
-                    .get()
-                    .getType();
-            if(type.getName().equals("int...")){
-                throw new RuntimeException("Varargs as local variable is not allowed");
             }
             return type;
         }
