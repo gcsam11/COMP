@@ -68,6 +68,10 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                 break;
             }
         }
+        if (table.getParameters(currentMethod).stream().anyMatch(parameter -> parameter.getName().equals(name)) ||
+                table.getLocalVariables(currentMethod).stream().anyMatch(variable -> variable.getName().equals(name))) {
+            isField = false;
+        }
 
         if(idExpr.getParent().getKind().equals("MemberAccessOp")) {
             return null;
