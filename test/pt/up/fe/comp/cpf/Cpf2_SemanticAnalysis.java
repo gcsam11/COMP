@@ -123,5 +123,15 @@ public class Cpf2_SemanticAnalysis {
         CpUtils.assertEquals("Lookup of field", "10", jasminResult.run().trim(), jasminResult);
     }
 
+    /**
+     * Test if the code can correctly lookup a param.
+     */
+    @Test
+    public void section2_Lookup_VarLookup_Param() {
+        var jasminResult = getJasminResult("lookup/VarLookup_Param.jmm");
+        System.out.println(jasminResult.getJasminCode());
+        CpUtils.assertEquals("Lookup of field", "10", jasminResult.run().trim(), jasminResult);
+    }
+
 
 }
