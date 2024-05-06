@@ -297,6 +297,14 @@ public class SemanticAnalysisTest {
         TestUtils.noErrors(result);
         System.out.println(result.getReports());
     }
+
+    @Test
+    public void ParamArguments() {
+        var result = TestUtils
+                .analyse(SpecsIo.getResource("pt/up/fe/comp/cp2/semanticanalysis/ParamArguments.jmm"));
+        TestUtils.noErrors(result);
+        System.out.println(result.getReports());
+    }
 }
 
 

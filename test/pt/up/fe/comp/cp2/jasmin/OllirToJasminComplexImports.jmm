@@ -1,19 +1,16 @@
-import imp.Obj;
-
-
-class Test {
-    int intField;
-    Obj test;
+class Simple {
 
     public static void main(String[] args) {
-
+        int n;
+        n = (new Simple()).foo((new Simple()).bar());
     }
 
-    public Obj foo(Obj obj) {
-        Test a;
-        a = new Test();
-        test = new Obj();
-        test.foo(test);
-        return obj;
+    public int foo(int n) {
+        return n;
     }
+
+    public int bar() {
+        return 1;
+    }
+
 }

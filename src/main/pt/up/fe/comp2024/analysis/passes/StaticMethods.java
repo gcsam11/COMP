@@ -53,6 +53,16 @@ public class StaticMethods extends AnalysisVisitor {
 
         var identifierName = identifier.get("value");
 
+        if(table.getParameters(currentMethod).stream()
+                .anyMatch(param -> param.getName().equals(identifierName)) && isStatic){
+            return null;
+        }
+
+        if(table.getLocalVariables(currentMethod).stream()
+                .anyMatch(varDecl -> varDecl.getName().equals(identifierName)) && isStatic){
+            return null;
+        }
+
         if (table.getFields().stream()
                 .anyMatch(param -> param.getName().equals(identifierName)) && isStatic){
             var message = String.format("Cannot access variable '%s' in static method '%s'", identifierName, currentMethod);
