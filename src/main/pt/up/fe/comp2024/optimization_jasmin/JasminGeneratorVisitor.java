@@ -1,10 +1,10 @@
 package pt.up.fe.comp2024.optimization_jasmin;
 
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
+import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.AJmmVisitor;
 import pt.up.fe.comp.jmm.ast.JmmNode;
 import pt.up.fe.comp2024.ast.Kind;
-import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 import pt.up.fe.specs.util.utilities.StringLines;
 
@@ -92,18 +92,23 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         // TODO - Generate class fields
         for(var field : table.getFields()) {
-            var fieldType = field.getType().getName();
+            var fieldType = field.getType();
             var fieldName = field.getName();
             var auxfield = "empty";
-            switch (fieldType) {
+            switch (fieldType.getName()) {
                 case "int":
                     auxfield = "I";
                     break;
                 case "boolean":
                     auxfield = "Z";
                     break;
+                default:
+                    if(table.getImports().contains(fieldType.getName()))
+                        auxfield = getImport(classDecl, fieldType);
+                        auxfield = "L"+auxfield+";";
+                    break;
             }
-            code.append(".field "+fieldName+" "+auxfield).append(NL);
+            code.append(".field public "+fieldName+" "+auxfield).append(NL);
 
         }
 
@@ -212,20 +217,10 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 break;
             default:
                 if(table.getImports().contains(returnType.getName())){
-                    var program = methodDecl.getParent().getParent();
-                    for(var imports: program.getChildren(Kind.IMPORT_DECL.getNodeName())){
-                        if(imports.get("importName").contains(returnType.getName())){
-                            var importName = imports.get("importName");
-                            var auxclasses = importName
-                                    .replace("[", "")
-                                    .replace("]", "")
-                                    .replace(" ", "")
-                                    .replace(",","/");
-                            code.append(")L").append(auxclasses).append(";").append(NL);
-                            break;
-                        }
-                    }
+                    var auxclasses = getImport(methodDecl, returnType);
+                    code.append(")L").append(auxclasses).append(";").append(NL);
                 }
+                break;
         }
 
         // Add limits
@@ -332,6 +327,10 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 break;
             }
         }
+        if(table.getParameters(currentMethod).stream().anyMatch(param -> param.getName().equals(destName)) ||
+                table.getLocalVariables(currentMethod).stream().anyMatch(varDecl -> varDecl.getName().equals(destName))) {
+            isField = false;
+        }
 
         if(fieldType.equals("int"))
             fieldType = "I";
@@ -351,19 +350,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 else
                     code.append("istore ").append(reg).append(NL);
                 break;
-            case "MemberAccessOp":
-                var memberAccessType = TypeUtils.getExprType(assignStmt.getChild(1), table, currentMethod);
-                if(isField)
-                    code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
-                else if(memberAccessType.getName().equals("Integer") || memberAccessType.getName().equals("Boolean") || TypeUtils.checkIfTypeIsPrimitive(memberAccessType))
-                    code.append("istore ").append(reg).append(NL);
-                else
-                    code.append("astore ").append(reg).append(NL);
-                break;
-
         }
-
-
 
         return code.toString();
     }
@@ -378,6 +365,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         switch(returnType.getName()){
             case "int", "boolean":
+                code.append(NL);
                 code.append("ireturn").append(NL);
                 break;
             case "void":
@@ -388,5 +376,25 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         }
 
         return code.toString();
+    }
+
+    private String getImport(JmmNode node, Type type){
+        var auxclasses = "";
+        var program = node.getParent();
+        while(!program.getKind().equals("Program")) {
+            program = program.getParent();
+        }
+        for(var imports: program.getChildren(Kind.IMPORT_DECL.getNodeName())){
+            if(imports.get("importName").contains(type.getName())){
+                var importName = imports.get("importName");
+                auxclasses = importName
+                        .replace("[", "")
+                        .replace("]", "")
+                        .replace(" ", "")
+                        .replace(",","/");
+                break;
+                }
+            }
+        return auxclasses;
     }
 }

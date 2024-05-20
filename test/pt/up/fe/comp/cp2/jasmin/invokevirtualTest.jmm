@@ -1,17 +1,17 @@
 class Test {
 
-    public static void main(String[] args) {
+	public static void main(String[] args) {
 
-
-    }
-
-	public void function() {
-    	int a;
-    	a = this.numberFunc();
 	}
 
-	public int numberFunc() {
-	    return 1024;
+    int numberFunc2(){
+        return 1024;
+    }
+
+	int numberFunc() {
+	    int a;
+        a = this.numberFunc2();
+        return a;
 	}
 
 }

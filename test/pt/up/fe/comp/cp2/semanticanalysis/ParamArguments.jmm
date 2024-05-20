@@ -1,0 +1,24 @@
+import java.Obj;
+
+class IncompatibleArguments {
+
+    public static void main(String[] args) {
+
+    }
+
+    public int foo(int a) {
+        return a + 1;
+    }
+
+    public int bar() {
+        IncompatibleArguments a;
+        int c;
+
+
+        a = new IncompatibleArguments();
+        c = 1;
+
+
+        return a.foo(a.foo(c));
+    }
+}

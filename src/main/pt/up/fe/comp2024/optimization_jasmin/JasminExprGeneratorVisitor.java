@@ -68,6 +68,10 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                 break;
             }
         }
+        if (table.getParameters(currentMethod).stream().anyMatch(parameter -> parameter.getName().equals(name)) ||
+                table.getLocalVariables(currentMethod).stream().anyMatch(variable -> variable.getName().equals(name))) {
+            isField = false;
+        }
 
         if(idExpr.getParent().getKind().equals("MemberAccessOp")) {
             return null;
@@ -86,7 +90,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             var identifierBeingAssigned = currentRegisters.get(idExpr.getParent().getChild(0).get("value"));
             code.append("aload_0").append(NL);
             code.append("getfield ").append(table.getClassName()).append("/").append(name).append(" ").append(fieldType).append(NL);
-            code.append("istore ").append(identifierBeingAssigned);
+            code.append("istore ").append(identifierBeingAssigned).append(NL);
+            code.append("iload ").append(identifierBeingAssigned);
         } else {
             if(code != null)
                 if(TypeUtils.checkIfTypeIsPrimitive(type))
@@ -113,7 +118,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         };
 
         //Added this because binary expression does not store the variable in the stack before running the code
-        if (!binaryExpr.getParent().getKind().equals("ParenOp")  && !binaryExpr.getParent().getKind().equals("BinaryExpr")) {
+        if (!binaryExpr.getParent().getKind().equals("ParenOp")  && !binaryExpr.getParent().getKind().equals("BinaryExpr") && !binaryExpr.getParent().getKind().equals("ReturnStmt")) {
             code.append("ldc 0").append(NL);
             code.append("istore ").append(currentRegisters.get(binaryExpr.getParent().getChild(0).get("value"))).append(NL);
         }
@@ -121,7 +126,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         code.append(op).append(NL);
 
 
-        if (!binaryExpr.getParent().getKind().equals("ParenOp") && !binaryExpr.getParent().getKind().equals("BinaryExpr")) {
+        if (!binaryExpr.getParent().getKind().equals("ParenOp") && !binaryExpr.getParent().getKind().equals("BinaryExpr") && !binaryExpr.getParent().getKind().equals("ReturnStmt")) {
             // store and load in next register
             var name = binaryExpr.getParent().getChild(0).get("value");
             var reg = currentRegisters.get(name);
@@ -200,7 +205,15 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         var memberAccessType = TypeUtils.getExprType(memberAccessOp, table, currentMethod);
         boolean isPrimitive = TypeUtils.checkIfTypeIsPrimitive(memberAccessType);
         // get register for object
-        var name = memberAccessOp.getChild(0).get("value");
+        var firstChild = memberAccessOp.getChild(0);
+        if(memberAccessOp.getChild(0).getKind().equals("ParenOp")){
+            for(var child: memberAccessOp.getChild(0).getDescendants()){
+                if(!child.getKind().equals("ParenOp")){
+                    firstChild = child;
+                }
+            }
+        }
+        var name = firstChild.get("value");
         var reg = currentRegisters.get(name);
 
         // If no mapping, variable has not been assigned yet, create mapping
@@ -209,34 +222,84 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             currentRegisters.put(name, reg);
         }
         // aload object if it is a class method and not directly from import
-        if(!memberAccessOp.getChild(0).getKind().equals("This") && !table.getImports().contains(memberAccessOp.getChild(0).get("value"))){
+        if(!firstChild.getKind().equals("This") && !table.getImports().contains(firstChild.get("value"))){
             code.append("aload ").append(reg).append(NL);
         }
         // load parameters
-        for(var child : memberAccessOp.getChildren().subList(1, memberAccessOp.getNumChildren())){
-            var idType = TypeUtils.getExprType(child, table, currentMethod);
-            reg = currentRegisters.get(child.get("value"));
-
-            // If no mapping, variable has not been assigned yet, create mapping
-            if (reg == null) {
-                reg = currentRegisters.size();
-                currentRegisters.put(name, reg);
+        for(var child : memberAccessOp.getChildren().subList(1, memberAccessOp.getNumChildren())) {
+            if (child.getKind().equals("ParenOp")) {
+                for (var grandChild : child.getDescendants()) {
+                    if (!grandChild.getKind().equals("ParenOp")) {
+                        child = grandChild;
+                    }
+                }
             }
 
-            if(!child.getKind().equals("IntegerLiteral") && !child.getKind().equals("BooleanLiteral")) {
-                if(idType.getName().equals(TypeUtils.getIntTypeName())){
-                    code.append("iload ").append(currentRegisters.get(child.get("value"))).append(NL);
+            if (child.getKind().equals("BinaryExpr")) {
+                continue;
+            }
+
+            var idType = TypeUtils.getExprType(child, table, currentMethod);
+            String childName;
+            if (!child.getKind().equals("MemberAccessOp")) {
+                childName = child.get("value");
+            } else {
+                childName = child.get("func");
+            }
+
+            boolean isField = false;
+            String fieldType = "";
+            for(var field : table.getFields()) {
+                if (field.getName().equals(childName)) {
+                    isField = true;
+                    fieldType = field.getType().getName();
+                    break;
                 }
-                else if(idType.getName().equals(TypeUtils.getBooleanTypeName())){
-                    code.append("iload ").append(currentRegisters.get(child.get("value"))).append(NL);
+            }
+            if (table.getParameters(currentMethod).stream().anyMatch(parameter -> parameter.getName().equals(childName)) ||
+                    table.getLocalVariables(currentMethod).stream().anyMatch(variable -> variable.getName().equals(childName))) {
+                isField = false;
+            }
+
+            if (isField) {
+                if(fieldType.equals("int"))
+                    fieldType = "I";
+                else if(fieldType.equals("boolean"))
+                    fieldType = "Z";
+                code.append("aload 0").append(NL);
+                code.append("getfield ").append(table.getClassName()).append("/").append(childName).append(" ").append(fieldType).append(NL);
+                reg = currentRegisters.get(childName);
+
+                // If no mapping, variable has not been assigned yet, create mapping
+                if (reg == null) {
+                    reg = currentRegisters.size();
+                    currentRegisters.put(childName, reg);
                 }
-                else{
-                    code.append("aload ").append(currentRegisters.get(child.get("value"))).append(NL);
+                code.append("istore ").append(reg).append(NL);
+                code.append("iload ").append(reg).append(NL);
+            } else {
+
+                reg = currentRegisters.get(childName);
+
+                // If no mapping, variable has not been assigned yet, create mapping
+                if (reg == null) {
+                    reg = currentRegisters.size();
+                    currentRegisters.put(childName, reg);
+                }
+
+                if (!child.getKind().equals("IntegerLiteral") && !child.getKind().equals("BooleanLiteral")) {
+                    if (idType.getName().equals(TypeUtils.getIntTypeName())) {
+                        code.append("iload ").append(currentRegisters.get(childName)).append(NL);
+                    } else if (idType.getName().equals(TypeUtils.getBooleanTypeName())) {
+                        code.append("iload ").append(currentRegisters.get(childName)).append(NL);
+                    } else {
+                        code.append("aload ").append(currentRegisters.get(childName)).append(NL);
+                    }
                 }
             }
         }
 
-        if(memberAccessOp.getChild(0).getKind().equals("This")){
+        if(firstChild.getKind().equals("This")){
             code.append("invokevirtual ");
         }
         else if(table.getImports().contains(memberAccessType.getName()) || table.getMethods().contains(memberAccessType.getName())){
@@ -265,7 +328,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                         .replace(",","/");
 
                 var auxLast = classes.split("/");
-
+                System.out.println(classes);
                 if(Objects.equals(auxLast[auxLast.length - 1], memberAccessType.getName())) {
                     code.append(classes).append("/");
                     break;
@@ -278,14 +341,14 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         code.append(funcName).append("(");
 
         for(var child : memberAccessOp.getChildren().subList(1, memberAccessOp.getNumChildren())){
-            var idType = TypeUtils.getExprType(child, table, currentMethod);
-            if(idType.getName().equals(TypeUtils.getIntTypeName())){
+            var paramType = TypeUtils.getExprType(child, table, currentMethod);
+            if(paramType.getName().equals(TypeUtils.getIntTypeName())){
                 code.append("I");
             }
-            else if(idType.getName().equals(TypeUtils.getBooleanTypeName())){
+            else if(paramType.getName().equals(TypeUtils.getBooleanTypeName())){
                 code.append("Z");
             }
-            else if(table.getImports().contains(idType.getName())){
+            else if(table.getImports().contains(paramType.getName())){
                 var program = memberAccessOp.getParent();
                 while(!program.getKind().equals("Program")) {
                     program = program.getParent();
@@ -329,13 +392,71 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                                 .replace(",","/");
                     }
                 }
-                if(table.getImports().contains(memberAccessOp.getChild(0).get("value"))){
+                if(table.getImports().contains(name)){
                     code.append("V");
                 }
                 else{
                     code.append("L").append(classes).append(";");
                 }
         }
+
+        boolean isReturn = true;
+        if(memberAccessOp.getParent().getKind().equals("ExprStmt")){
+            isReturn = false;
+        }
+        if(isReturn && !memberAccessOp.getAncestor("BinaryExpr").isPresent()){
+            code.append(NL);
+            // Return store
+            if(TypeUtils.checkIfTypeIsPrimitive(TypeUtils.getExprType(memberAccessOp, table, currentMethod)) && !memberAccessOp.getAncestor("BinaryExpr").isPresent()){
+                if(memberAccessOp.getAncestor("AssignStmt").isPresent() && !memberAccessOp.getAncestor("MemberAccessOp").isPresent()){
+                    name = memberAccessOp.getAncestor("AssignStmt").get().getChild(0).get("value");
+                    reg = currentRegisters.get(name);
+
+                    // If no mapping, variable has not been assigned yet, create mapping
+                    if (reg == null) {
+                        reg = currentRegisters.size();
+                        currentRegisters.put(name, reg);
+                    }
+                    code.append("istore ").append(reg);
+                }
+                else{
+                    var func = memberAccessOp.get("func");
+                    reg = currentRegisters.get(func);
+
+                    // If no mapping, variable has not been assigned yet, create mapping
+                    if (reg == null) {
+                        reg = currentRegisters.size();
+                        currentRegisters.put(func, reg);
+                    }
+                    code.append("istore ").append(reg);
+                }
+            }
+            else{
+                if(memberAccessOp.getAncestor("AssignStmt").isPresent() && !memberAccessOp.getAncestor("MemberAccessOp").isPresent()){
+                    name = memberAccessOp.getAncestor("AssignStmt").get().getChild(0).get("value");
+                    reg = currentRegisters.get(name);
+
+                    // If no mapping, variable has not been assigned yet, create mapping
+                    if (reg == null) {
+                        reg = currentRegisters.size();
+                        currentRegisters.put(name, reg);
+                    }
+                    code.append("astore ").append(reg);
+                }
+                else{
+                    var func = memberAccessOp.get("func");
+                    reg = currentRegisters.get(func);
+
+                    // If no mapping, variable has not been assigned yet, create mapping
+                    if (reg == null) {
+                        reg = currentRegisters.size();
+                        currentRegisters.put(func, reg);
+                    }
+                    code.append("astore ").append(reg);
+                }
+            }
+        }
+
         code.append(NL);
 
         return null;

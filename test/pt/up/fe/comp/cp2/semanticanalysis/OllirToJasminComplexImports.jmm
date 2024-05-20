@@ -1,0 +1,19 @@
+import imp.Obj;
+
+
+class Test {
+    int intField;
+    Obj test;
+
+    public static void main(String[] args) {
+
+    }
+
+    public Obj foo(Obj obj) {
+        Test a;
+        a = new Test();
+        test = new Obj();
+        test.foo(test);
+        return obj;
+    }
+}
