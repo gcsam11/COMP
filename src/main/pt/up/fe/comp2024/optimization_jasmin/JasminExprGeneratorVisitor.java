@@ -45,9 +45,40 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         addVisit("ArrayAccessOp", this::visitArrayAccessOp);
     }
 
+    public static void loadIStore(int reg, StringBuilder code) {
+        if(reg <= 3)
+            code.append("istore_").append(reg).append(NL);
+        else
+            code.append("istore ").append(reg).append(NL);
+    }
+
+    public static void loadILoad(int reg, StringBuilder code) {
+        if(reg <= 3)
+            code.append("iload_").append(reg).append(NL);
+        else
+            code.append("iload ").append(reg).append(NL);
+    }
+
+    public static void loadAStore(int reg, StringBuilder code) {
+        if(reg <= 3)
+            code.append("astore_").append(reg).append(NL);
+        else
+            code.append("astore ").append(reg).append(NL);
+    }
+
+    public static void loadALoad(int reg, StringBuilder code) {
+        if(reg <= 3)
+            code.append("aload_").append(reg).append(NL);
+        else
+            code.append("aload ").append(reg).append(NL);
+    }
+
     private Void visitIntegerLiteral(JmmNode integerLiteral, StringBuilder code) {
         var value = Integer.parseInt(integerLiteral.get("value"));
-        if(value >= -1 && value <= 5){
+        if(value == -1){
+            code.append("iconst_m1").append(NL);
+        }
+        if(value > -1 && value <= 5){
             code.append("iconst_").append(value).append(NL);
         }
         else if(value >= -127 && value <= 128){
@@ -110,14 +141,14 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             var identifierBeingAssigned = currentRegisters.get(idExpr.getParent().getChild(0).get("value"));
             code.append("aload_0").append(NL);
             code.append("getfield ").append(table.getClassName()).append("/").append(name).append(" ").append(fieldType).append(NL);
-            code.append("istore_").append(identifierBeingAssigned).append(NL);
-            code.append("iload_").append(identifierBeingAssigned).append(NL);
+            loadIStore(identifierBeingAssigned, code);
+            loadILoad(identifierBeingAssigned, code);
         } else {
             if(code != null)
                 if(TypeUtils.checkIfTypeIsPrimitive(type) && !type.isArray())
-                    code.append("iload_").append(reg).append(NL);
+                    loadILoad(reg, code);
                 else
-                    code.append("aload_").append(reg).append(NL);
+                    loadALoad(reg, code);
         }
 
 
@@ -149,8 +180,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             case "BinaryExpr":
                 var reg = currentRegisters.size();
                 currentRegisters.put("temp_" + reg, reg);
-                code.append("istore_").append(reg).append(NL);
-                code.append("iload_").append(reg).append(NL);
+                loadIStore(reg, code);
+                loadILoad(reg, code);
                 break;
             case "AssignStmt":
                 var name = binaryExpr.getParent().getChild(0).get("value"); // TODO - Could be array access
@@ -168,7 +199,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                     currentRegisters.put(name, regAssign);
                 }
 
-                code.append("istore_").append(regAssign).append(NL);
+                loadIStore(regAssign, code);
                 break;
 
         }
@@ -225,8 +256,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         else{
             code.append("new ").append(newOp.get("value")).append(NL);
             code.append("dup" + NL);
-            code.append("astore_").append(reg).append(NL);
-            code.append("aload_").append(reg).append(NL);
+            loadAStore(reg, code);
+            loadALoad(reg, code);
             code.append("invokespecial ").append(newOp.get("value")).append("/<init>()V").append(NL);
             return null;
         }
@@ -255,7 +286,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         }
         // aload object if it is a class method and not directly from import
         if(!firstChild.getKind().equals("This") && !table.getImports().contains(firstChild.get("value"))){
-            code.append("aload_").append(reg).append(NL);
+            loadALoad(reg, code);
         }
         // load parameters
         for(var child : memberAccessOp.getChildren().subList(1, memberAccessOp.getNumChildren())) {
@@ -319,8 +350,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                     reg = currentRegisters.size();
                     currentRegisters.put(childName, reg);
                 }
-                code.append("istore_").append(reg).append(NL);
-                code.append("iload_").append(reg).append(NL);
+                loadIStore(reg, code);
+                loadILoad(reg, code);
             } else {
 
                 reg = currentRegisters.get(childName);
@@ -338,11 +369,11 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
 
                     } else if (idType.getName().equals(TypeUtils.getIntTypeName())) {
-                        code.append("iload_").append(currentRegisters.get(childName)).append(NL);
+                        loadILoad(currentRegisters.get(childName), code);
                     } else if (idType.getName().equals(TypeUtils.getBooleanTypeName())) {
-                        code.append("iload_").append(currentRegisters.get(childName)).append(NL);
+                        loadILoad(currentRegisters.get(childName), code);
                     } else {
-                        code.append("aload_").append(currentRegisters.get(childName)).append(NL);
+                        loadALoad(currentRegisters.get(childName), code);
                     }
                 }
             }
@@ -465,7 +496,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                         reg = currentRegisters.size();
                         currentRegisters.put(name, reg);
                     }
-                    code.append("istore_").append(reg);
+                    loadIStore(reg, code);
                 }
                 else{
                     var func = memberAccessOp.get("func");
@@ -476,7 +507,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                         reg = currentRegisters.size();
                         currentRegisters.put(func, reg);
                     }
-                    code.append("istore_").append(reg);
+                    loadIStore(reg, code);
                 }
             }
             else{
@@ -489,7 +520,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                         reg = currentRegisters.size();
                         currentRegisters.put(name, reg);
                     }
-                    code.append("astore_").append(reg);
+                    loadAStore(reg, code);
                 }
                 else{
                     var func = memberAccessOp.get("func");
@@ -500,7 +531,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                         reg = currentRegisters.size();
                         currentRegisters.put(func, reg);
                     }
-                    code.append("astore_").append(reg);
+                    loadAStore(reg, code);
                 }
             }
         }
@@ -551,7 +582,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         }
 
         code.append("arraylength").append(NL);
-        code.append("istore_").append(reg).append(NL);
+        loadIStore(reg, code);
 
         return null;
     }

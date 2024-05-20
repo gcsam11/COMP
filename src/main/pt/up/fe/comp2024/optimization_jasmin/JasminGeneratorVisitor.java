@@ -376,13 +376,13 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 case "This":
                     code.append("invokespecial ").append(table.getClassName()).append("/<init>()V").append(NL);
                 case "NewOpObject", "NewOpArray":
-                    code.append("astore_").append(reg).append(NL);
+                    exprGenerator.loadAStore(reg, code);
                     break;
                 case "IntegerLiteral", "BooleanLiteral":
                     if(isField)
                         code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
                     else
-                        code.append("istore_").append(reg).append(NL);
+                        exprGenerator.loadIStore(reg, code);
                     break;
             }
 
