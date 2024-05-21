@@ -341,14 +341,14 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         switch (literalType) {
             case "This":
                 code.append("invokespecial ").append(table.getClassName()).append("/<init>()V").append(NL);
-            case "NewOpObject":
-                code.append("astore ").append(reg).append(NL);
+            case "NewOpObject", "NewOpArray":
+                code.append("astore_").append(reg).append(NL);
                 break;
             case "IntegerLiteral", "BooleanLiteral":
                 if(isField)
                     code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
                 else
-                    code.append("istore ").append(reg).append(NL);
+                    code.append("istore_").append(reg).append(NL);
                 break;
         }
 
