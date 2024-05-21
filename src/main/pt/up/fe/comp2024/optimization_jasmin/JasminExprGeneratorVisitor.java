@@ -73,7 +73,31 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             code.append("aload ").append(reg).append(NL);
     }
 
+    private boolean checkForIinc(JmmNode ParentExpr) {
+        if (ParentExpr.getChild(1).getKind().equals("BinaryExpr")){
+            if(ParentExpr.getChild(1).get("op").equals("+")) {
+                if (ParentExpr.getKind().equals("AssignStmt")) {
+                    var name = ParentExpr.getChild(0).get("value");
+                    if (ParentExpr.getChildren("IntegerLiteral").size() == 1) {
+                        var literal = ParentExpr.getChildren("IntegerLiteral").get(0).get("value");
+                        if (ParentExpr.getChildren("Identifier").size() == 2) {
+                            var childIds = ParentExpr.getChildren("Identifier");
+                            return childIds.get(0).get("value").equals(childIds.get(1).get("value"));
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     private Void visitIntegerLiteral(JmmNode integerLiteral, StringBuilder code) {
+        if(integerLiteral.getAncestor("AssignStmt").isPresent()){
+            if(checkForIinc(integerLiteral.getAncestor("AssignStmt").get())){
+                return null;
+            }
+        }
+
         var value = Integer.parseInt(integerLiteral.get("value"));
         if(value == -1){
             code.append("iconst_m1").append(NL);
@@ -83,6 +107,9 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         }
         else if(value >= -127 && value <= 128){
             code.append("bipush ").append(value).append(NL);
+        }
+        else if(value >= -32768 && value <= 32767){
+            code.append("sipush ").append(value).append(NL);
         }
         else{
             code.append("ldc ").append(value).append(NL);
@@ -150,7 +177,6 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                 else
                     loadALoad(reg, code);
         }
-
 
         return null;
     }
