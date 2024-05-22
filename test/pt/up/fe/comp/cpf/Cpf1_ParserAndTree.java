@@ -29,6 +29,7 @@ public class Cpf1_ParserAndTree {
     @Test
     public void section1_OpPrecedence_1_AddMultConstants() {
         var result = getJmmResult("AddMultConstants.jmm");
+        System.out.println(result.getJasminCode());
         TestUtils.noErrors(result.getReports());
         CpUtils.assertEquals("Wrong results", "7\n12\n9", SpecsStrings.normalizeFileContents(result.run(), true),
                 result);

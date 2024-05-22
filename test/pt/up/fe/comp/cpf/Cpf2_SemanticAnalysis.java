@@ -133,5 +133,13 @@ public class Cpf2_SemanticAnalysis {
         CpUtils.assertEquals("Lookup of field", "10", jasminResult.run().trim(), jasminResult);
     }
 
+    @Test
+    public void section2_Complex_Array_Access(){
+        var result = TestUtils
+                .analyse(SpecsIo.getResource("pt/up/fe/comp/cpf/2_semantic_analysis/ComplexArrayAccess.jmm"));
+        TestUtils.noErrors(result);
+        System.out.println(result.getReports());
+    }
+
 
 }
