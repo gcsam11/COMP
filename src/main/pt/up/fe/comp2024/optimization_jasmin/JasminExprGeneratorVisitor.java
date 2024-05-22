@@ -2,6 +2,7 @@ package pt.up.fe.comp2024.optimization_jasmin;
 
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.ast.JmmNode;
+import pt.up.fe.comp.jmm.ast.JmmNodeImpl;
 import pt.up.fe.comp.jmm.ast.PostorderJmmVisitor;
 import pt.up.fe.comp2024.ast.Kind;
 import pt.up.fe.comp2024.ast.TypeUtils;
@@ -15,7 +16,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
     private static final String NL = "\n";
     private final SymbolTable table;
-    private String currentMethod;
+    private final String currentMethod;
 
     private final Map<String, Integer> currentRegisters;
 
@@ -105,17 +106,21 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
     }
 
     private Void visitBinaryExpr(JmmNode binaryExpr, StringBuilder code) {
-
         // get the operation
         var op = switch (binaryExpr.get("op")) {
             case "/" -> "idiv";
             case "*" -> "imul";
             case "+" -> "iadd";
             case "-" -> "isub";
-            case "<" -> "iflt"; // fazer manualmente, if i < 7 return 1 else return 0
+            case "<" -> "if_icmplt"; // fazer manualmente, if i < 7 return 1 else return 0
             case "&&" -> "iand";
             default -> throw new NotImplementedException(binaryExpr.get("op"));
         };
+
+        if(binaryExpr.getParent().getKind().equals("IfElseStmt")) {
+            code.append(op).append(" ");
+            return null;
+        }
 
         //Added this because binary expression does not store the variable in the stack before running the code
         if (!binaryExpr.getParent().getKind().equals("ParenOp")  && !binaryExpr.getParent().getKind().equals("BinaryExpr") && !binaryExpr.getParent().getKind().equals("ReturnStmt")) {
@@ -143,7 +148,6 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
         return null;
     }
-
 
     private Void visitNewOpObject(JmmNode newOp, StringBuilder code) {
         var name = newOp.getParent().getChild(0).get("value");
@@ -396,10 +400,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                 }
         }
 
-        boolean isReturn = true;
-        if(memberAccessOp.getParent().getKind().equals("ExprStmt")){
-            isReturn = false;
-        }
+        boolean isReturn = !memberAccessOp.getParent().getKind().equals("ExprStmt");
         if(isReturn && !memberAccessOp.getAncestor("BinaryExpr").isPresent()){
             code.append(NL);
             // Return store
@@ -472,5 +473,4 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         }
         return null;
     }
-
 }
