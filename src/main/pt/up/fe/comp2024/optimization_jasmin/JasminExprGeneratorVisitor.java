@@ -18,15 +18,19 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
     private static final String NL = "\n";
     private final SymbolTable table;
     private String currentMethod;
+    private int currNumInStack;
+    private int maxInStack;
     private HashMap<String, Integer> numberOfArrayAccessCall = new HashMap<>();
 
     private final Map<String, Integer> currentRegisters;
 
 
-    public JasminExprGeneratorVisitor(Map<String, Integer> currentRegisters, SymbolTable table, String methodName) {
+    public JasminExprGeneratorVisitor(Map<String, Integer> currentRegisters, SymbolTable table, String methodName, int currNumInStack, int maxInStack){
         this.table = table;
         this.currentRegisters = currentRegisters;
         currentMethod = methodName;
+        this.currNumInStack = currNumInStack;
+        this.maxInStack = maxInStack;
     }
 
     @Override
@@ -47,32 +51,44 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         addVisit("ArrayCreationOp", this::visitArrayCreationOp);
     }
 
-    public static void loadIStore(int reg, StringBuilder code) {
+    public void loadIStore(int reg, StringBuilder code) {
         if(reg <= 3)
             code.append("istore_").append(reg).append(NL);
         else
             code.append("istore ").append(reg).append(NL);
+        currNumInStack--;
     }
 
-    public static void loadILoad(int reg, StringBuilder code) {
+    public void loadILoad(int reg, StringBuilder code) {
         if(reg <= 3)
             code.append("iload_").append(reg).append(NL);
         else
             code.append("iload ").append(reg).append(NL);
+        currNumInStack++;
+        updateMaxInStack();
     }
 
-    public static void loadAStore(int reg, StringBuilder code) {
+    public void loadAStore(int reg, StringBuilder code) {
         if(reg <= 3)
             code.append("astore_").append(reg).append(NL);
         else
             code.append("astore ").append(reg).append(NL);
+        currNumInStack--;
     }
 
-    public static void loadALoad(int reg, StringBuilder code) {
+    public void loadALoad(int reg, StringBuilder code) {
         if(reg <= 3)
             code.append("aload_").append(reg).append(NL);
         else
             code.append("aload ").append(reg).append(NL);
+        currNumInStack++;
+        updateMaxInStack();
+    }
+
+    public void updateMaxInStack(){
+        if(currNumInStack > maxInStack){
+            maxInStack = currNumInStack;
+        }
     }
 
     private Void checkConstantSize(int size, StringBuilder code) {
@@ -91,6 +107,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         else{
             code.append("ldc ").append(size).append(NL);
         }
+        currNumInStack++;
+        updateMaxInStack();
         return null;
     }
 
@@ -110,6 +128,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             default -> "";
         };
         code.append("iconst_").append(value).append(NL);
+        currNumInStack++;
+        updateMaxInStack();
         return null;
     }
 
@@ -160,6 +180,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         if(isField) {
             var identifierBeingAssigned = currentRegisters.get(idExpr.getParent().getChild(0).get("value"));
             code.append("aload_0").append(NL);
+            currNumInStack++;
+            updateMaxInStack();
             code.append("getfield ").append(table.getClassName()).append("/").append(name).append(" ").append(fieldTypeString).append(NL);
             loadIStore(identifierBeingAssigned, code);
             loadILoad(identifierBeingAssigned, code);
@@ -197,7 +219,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
         switch(parent.getKind()){
             case "BinaryExpr":
-                var reg = currentRegisters.size() + 1;
+                var reg = currentRegisters.size();
                 currentRegisters.put("temp_" + reg, reg);
                 loadIStore(reg, code);
                 loadILoad(reg, code);
@@ -213,11 +235,9 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                 }
                 if(currentRegisters.containsKey("temp_" + regAssign)){
                     regAssign = currentRegisters.size();
-
                     currentRegisters.remove(name);
                     currentRegisters.put(name, regAssign);
                 }
-                System.out.println(name + ' ' + regAssign);
                 loadIStore(regAssign, code);
                 break;
         }
@@ -267,16 +287,26 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                     .replace(" ", "")
                     .replace(",","/");
             code.append("new ").append(classes).append(NL);
-            code.append("dup" + NL);
+            currNumInStack++;
+            updateMaxInStack();
+            code.append("dup").append(NL);
+            currNumInStack++;
+            updateMaxInStack();
             code.append("invokespecial ").append(classes).append("/<init>()V").append(NL);
+            currNumInStack--;
             return null;
         }
         else{
             code.append("new ").append(newOp.get("value")).append(NL);
+            currNumInStack++;
+            updateMaxInStack();
             code.append("dup" + NL);
+            currNumInStack++;
+            updateMaxInStack();
             loadAStore(reg, code);
             loadALoad(reg, code);
             code.append("invokespecial ").append(newOp.get("value")).append("/<init>()V").append(NL);
+            currNumInStack--;
             return null;
         }
     }
@@ -297,8 +327,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         var name = firstChild.get("value");
         var reg = currentRegisters.get(name);
 
-        // If no mapping, variable has not been assigned yet, create mapping
-        if (reg == null && !name.equals("this")) {
+        // If no mapping, variable has not been assigned yet, create mapping, unless for this and imports
+        if (reg == null && !name.equals("this") && !table.getImports().contains(name)) {
             reg = currentRegisters.size();
             currentRegisters.put(name, reg);
         }
@@ -331,7 +361,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                     numberOfArrayAccessCall.replace(child.getChild(0).get("value"), numberOfArrayAccessCall.get(child.getChild(0).get("value")) + 1);
                 }
             } else if (child.getKind().equals("BinaryExpr")) {
-                    reg = currentRegisters.size() + 1;
+                    reg = currentRegisters.size();
                     currentRegisters.put("temp_" + reg, reg);
                     loadIStore(reg, code);
                     childName = "temp_" + reg;
@@ -568,7 +598,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         }
         else if(isReturn && memberAccessOp.getAncestor("BinaryExpr").isPresent()){
             code.append(NL);
-            reg = currentRegisters.size() + 1;
+            reg = currentRegisters.size();
             currentRegisters.put("temp_" + reg, reg);
             loadIStore(reg, code);
             loadILoad(reg, code);

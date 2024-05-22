@@ -23,6 +23,8 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
     private String currentMethod;
     private int nextRegister;
+    private int currNumInStack;
+    private int maxInStack;
 
     private Map<String, Integer> currentRegisters;
 
@@ -172,7 +174,10 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             nextRegister++;
         }
 
-        exprGenerator = new JasminExprGeneratorVisitor(currentRegisters, table, currentMethod);
+        currNumInStack = 0;
+        maxInStack = 0;
+
+        exprGenerator = new JasminExprGeneratorVisitor(currentRegisters, table, currentMethod, currNumInStack, maxInStack);
 
         var code = new StringBuilder();
 
@@ -269,7 +274,12 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         code_rest.append(".end method\n");
 
         code.append(".limit stack 99").append(NL);
-        code.append(".limit locals ").append(currentRegisters.size()+1).append(NL);
+        if(methodDecl.getObject("isStatic",Boolean.class)){
+            code.append(".limit locals ").append(currentRegisters.size()).append(NL);
+        }
+        else{
+            code.append(".limit locals ").append(currentRegisters.size()+1).append(NL);
+        }
 
         // reset information
         exprGenerator = null;
