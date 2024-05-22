@@ -5,8 +5,12 @@ class Simple {
         n = (new Simple()).foo((new Simple()).bar());
     }
 
-    public int foo(int n) {
-        return n;
+    public Obj foo(Obj obj) {
+        Test a;
+        a = new Test();
+        test = new Obj();
+        (new Obj()).foo(test);
+        return obj;
     }
 
     public int bar() {

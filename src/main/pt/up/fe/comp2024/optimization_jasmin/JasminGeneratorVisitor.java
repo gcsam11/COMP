@@ -5,12 +5,11 @@ import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.AJmmVisitor;
 import pt.up.fe.comp.jmm.ast.JmmNode;
 import pt.up.fe.comp2024.ast.Kind;
+import pt.up.fe.comp2024.ast.TypeUtils;
 import pt.up.fe.specs.util.SpecsCheck;
 import pt.up.fe.specs.util.utilities.StringLines;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
@@ -24,6 +23,8 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
     private String currentMethod;
     private int nextRegister;
+    private int currNumInStack;
+    private int maxInStack;
 
     private Map<String, Integer> currentRegisters;
 
@@ -47,6 +48,38 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit("AssignStmt", this::visitAssignStmt);
         addVisit("ReturnStmt", this::visitReturnStmt);
         addVisit("ExprStmt", this::visitExprStmt);
+    }
+
+    private void updateRegisters(JmmNode AssignStmt) {
+        var methodDecl = AssignStmt.getAncestor("MethodDecl").get();
+        var noDuplicateRegisterNumbers = new HashMap<String, Integer>();
+
+        // check for duplicate registers
+        for (var entry : currentRegisters.entrySet()) {
+            if (!entry.getKey().equals("temp_" + entry.getValue()) && methodDecl.getChildren("ParamDecl").stream().anyMatch(param -> param.get("var").equals(entry.getKey()))) {
+                noDuplicateRegisterNumbers.put(entry.getKey(), entry.getValue());
+            } else {
+                if (entry.getKey().equals("temp_" + entry.getValue())) {
+                    noDuplicateRegisterNumbers.put("temp_" + entry.getValue(), entry.getValue());
+                }
+            }
+        }
+
+        String previousEntryName = "";
+        Integer previousEntryValue = -1;
+
+        // recheck for duplicate registers of non ParamDecl variables
+        for(var registers: currentRegisters.entrySet()){
+            if(!previousEntryName.equals(registers.getKey()) && previousEntryValue == registers.getValue() && !previousEntryName.equals("temp_" + previousEntryValue)){
+                noDuplicateRegisterNumbers.put(previousEntryName, noDuplicateRegisterNumbers.size() + 1);
+            }
+            previousEntryName = registers.getKey();
+            previousEntryValue = registers.getValue();
+        }
+
+        currentRegisters = noDuplicateRegisterNumbers;
+        nextRegister = currentRegisters.size();
+        exprGenerator.setRegisters(currentRegisters, nextRegister);
     }
 
 
@@ -90,14 +123,16 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             superClass = "invokespecial java/lang/Object/<init>()V\n";
         }
 
-        // TODO - Generate class fields
         for(var field : table.getFields()) {
             var fieldType = field.getType();
             var fieldName = field.getName();
             var auxfield = "empty";
             switch (fieldType.getName()) {
                 case "int":
-                    auxfield = "I";
+                    if(fieldType.isArray())
+                        auxfield = "[I";
+                    else
+                        auxfield = "I";
                     break;
                 case "boolean":
                     auxfield = "Z";
@@ -131,9 +166,28 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         return code.toString();
     }
 
+    private int calculateLocals(JmmNode methodDecl){
+        int locals = 0;
+        var params = methodDecl.getChildren("ParamDecl");
+        // add params that were not used
+        for(var param: params){
+            if(!currentRegisters.containsKey(param.get("var"))){
+                locals++;
+            }
+        }
+
+        if(methodDecl.getObject("isStatic",Boolean.class)){
+            locals += currentRegisters.size();
+        }
+        else{
+            locals += currentRegisters.size()+1;
+        }
+
+        return locals;
+    }
+
     private String visitMethodDecl(JmmNode methodDecl, Void unused) {
         var methodName = methodDecl.get("name");
-
         // set method
         currentMethod = methodName;
 
@@ -145,19 +199,25 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         // initialize register map and set parameters
         currentRegisters = new HashMap<>();
+        var isUsed = false;
+        var identifiers = methodDecl.getDescendants("Identifier");
         for (var param : methodDecl.getChildren("ParamDecl")) {
-            currentRegisters.put(param.get("var"), nextRegister);
-            nextRegister++;
+            if(!methodName.equals("main")){
+                currentRegisters.put(param.get("var"), nextRegister);
+                nextRegister++;
+            }
         }
 
-        exprGenerator = new JasminExprGeneratorVisitor(currentRegisters, table, currentMethod);
+        currNumInStack = 0;
+        maxInStack = 0;
+
+        exprGenerator = new JasminExprGeneratorVisitor(currentRegisters, table, currentMethod, currNumInStack, maxInStack);
 
         var code = new StringBuilder();
 
         // calculate modifier
         var modifier = methodDecl.getObject("isPublic", Boolean.class) ? "public " : "";
 
-        // TODO: Hardcoded param types and return type, needs to be expanded -> DONE
         if(methodDecl.getObject("isStatic",Boolean.class))
             code.append("\n.method ").append(modifier).append("static ").append(methodName).append("(");
         else
@@ -165,15 +225,22 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         String classes = "empty";
         for(var param : methodDecl.getChildren("ParamDecl")){
-            switch(param.getChild(0).getKind()){
-                case "IntType":
-                    code.append("I");
+            var paramType = TypeUtils.getExprType(param, table, methodDecl.get("name"));
+            switch(paramType.getName()){
+                case "int":
+                    if(paramType.isArray())
+                        code.append("[I");
+                    else
+                        code.append("I");
                     break;
-                case "BooleanType":
+                case "boolean":
                     code.append("Z");
                     break;
-                case "StringArrayType":
-                    code.append("[Ljava/lang/String;");
+                case "String":
+                    if(paramType.isArray())
+                        code.append("[Ljava/lang/String;");
+                    else
+                        code.append("Ljava/lang/String;");
                     break;
                 default:
                     var importNode = methodDecl.getParent();
@@ -182,7 +249,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                         importNode = importNode.getParent();
                     }
 
-                    var importNodes = importNode.getChildren();
+                    var importNodes = importNode.getChildren("ImportDecl");
                     for(var anImport: importNodes) {
                         classes = anImport.get("importName")
                                 .replace("[", "")
@@ -206,6 +273,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         switch(returnType.getName()){
             case "int":
                 if(returnType.isArray()) code.append(")[I").append(NL);
+                if(returnType.isArray()) code.append(")[I").append(NL);
                 else code.append(")I").append(NL);
                 break;
             case "boolean":
@@ -223,39 +291,34 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 break;
         }
 
-        // Add limits
-        code.append(TAB).append(".limit stack 99").append(NL);
-        code.append(TAB).append(".limit locals 99").append(NL);
-
-        if (!methodDecl.getObject("isStatic", Boolean.class)) { // if it has a "This" Node, only call aload_0 when This is called
-            boolean thisExists = false;
-            for(JmmNode descendant: methodDecl.getDescendants()) {
-                if(descendant.getKind().equals("This")) {
-                    thisExists = true;
-                    break;
-                }
-            }
-            if(!thisExists) code.append(TAB).append("aload_0").append(NL);
-        }
+        // generate code for all statements
+        var code_rest = new StringBuilder();
 
         for (var stmt : methodDecl.getChildren("Stmt")) {
             // Get code for statement, split into lines and insert the necessary indentation
             var instCode = StringLines.getLines(visit(stmt)).stream()
                     .collect(Collectors.joining(NL + TAB, TAB, NL));
 
-            code.append(instCode);
+            code_rest.append(instCode);
         }
 
         if(returnType.getName().equals("void"))
-            code.append("\treturn").append(NL);
+            code_rest.append("\treturn").append(NL);
 
-        code.append(".end method\n");
+        code_rest.append(".end method\n");
+
+        code.append(".limit stack 99").append(NL);
+
+        var locals = calculateLocals(methodDecl);
+        code.append(".limit locals ").append(locals).append(NL);
 
         // reset information
         exprGenerator = null;
         nextRegister = -1;
         currentRegisters = null;
         currentMethod = null;
+
+        code.append(code_rest);
 
         return code.toString();
     }
@@ -276,9 +339,92 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         if (stmt.getKind().equals("MemberAccessOp")) {
             // store value in top of the stack in destination
             var lhs = stmt.getChild(0);
-            SpecsCheck.checkArgument(lhs.isInstance("Identifier") || lhs.isInstance("This"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
+            SpecsCheck.checkArgument(lhs.isInstance("Identifier") || lhs.isInstance("This") || lhs.isInstance("ParenOp"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
 
             var destName = lhs.get("value");
+
+            // get register
+            var reg = currentRegisters.get(destName);
+
+            if(!table.getImports().stream().anyMatch(importDecl -> importDecl.equals(destName))) {
+                // If no mapping, variable has not been assigned yet, create mapping
+                if (reg == null) {
+                    reg = nextRegister;
+                    currentRegisters.put(destName, reg);
+                    nextRegister++;
+                }
+            }
+
+            exprGenerator.visit(stmt, code);
+        }
+
+        return code.toString();
+    }
+
+    private boolean checkForIinc(JmmNode assignStmt, StringBuilder code){
+        var lhs = assignStmt.getChild(0);
+        var childExpr = assignStmt.getChild(1);
+
+        while(childExpr.getKind().equals("ParenOp")){
+            childExpr = childExpr.getChild(0);
+        }
+
+        if(childExpr.getKind().equals("BinaryExpr")){
+            var operator = childExpr.get("op");
+            if(operator.equals("+") || operator.equals("-")){
+                if(childExpr.getDescendants("IntegerLiteral").size() == 1 && childExpr.getDescendants("Identifier").size() == 1){
+                    var identifier = childExpr.getDescendants("Identifier").get(0);
+                    var integerLiteral = childExpr.getDescendants("IntegerLiteral").get(0);
+                    if(identifier.get("value").equals(lhs.get("value")) && (Integer.parseInt(integerLiteral.get("value")) > -127 && Integer.parseInt(integerLiteral.get("value")) < 128)){
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private void checkForField(String destName, StringBuilder code){
+        var isField = false;
+        if(table.getFields().stream().anyMatch(param -> param.getName().equals(destName))){
+            isField = true;
+        }
+        if(table.getParameters(currentMethod).stream().anyMatch(param -> param.getName().equals(destName)) ||
+                table.getLocalVariables(currentMethod).stream().anyMatch(varDecl -> varDecl.getName().equals(destName))) {
+            isField = false;
+        }
+
+        if(isField){
+            code.append("aload_0").append(NL);
+        }
+    }
+
+    private String visitAssignStmt(JmmNode assignStmt, Void unused) {
+        var code = new StringBuilder();
+
+        // store value in top of the stack in destination
+        var lhs = assignStmt.getChild(0);
+        SpecsCheck.checkArgument(lhs.isInstance("Identifier") || lhs.isInstance("This") || lhs.isInstance("ParenOp") || lhs.isInstance("ArrayAccessOp"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
+
+        String destName;
+        if(lhs.isInstance("ArrayAccessOp")) {
+            destName = lhs.getChild(0).get("value");
+
+            checkForField(destName, code);
+
+            exprGenerator.visit(assignStmt.getChild(0), code);
+
+            // generate code that will put the value on the right on top of the stack
+            exprGenerator.visit(assignStmt.getChild(1), code);
+
+            code.append("iastore").append(NL);
+
+            return code.toString();
+        }
+        else{
+            destName = lhs.get("value");
+
+            checkForField(destName, code);
 
             // get register
             var reg = currentRegisters.get(destName);
@@ -290,69 +436,62 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 nextRegister++;
             }
 
-            exprGenerator.visit(stmt, code);
-        }
-
-        return code.toString();
-    }
-
-    private String visitAssignStmt(JmmNode assignStmt, Void unused) {
-        var code = new StringBuilder();
-
-        // store value in top of the stack in destination
-        var lhs = assignStmt.getChild(0);
-        SpecsCheck.checkArgument(lhs.isInstance("Identifier") || lhs.isInstance("This"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
-
-        var destName = lhs.get("value");
-
-        // get register
-        var reg = currentRegisters.get(destName);
-
-        // If no mapping, variable has not been assigned yet, create mapping
-        if (reg == null) {
-            reg = nextRegister;
-            currentRegisters.put(destName, reg);
-            nextRegister++;
-        }
-
-        // generate code that will put the value on the right on top of the stack
-        exprGenerator.visit(assignStmt.getChild(1), code);
-
-        boolean isField = false;
-        var fieldType = "empty";
-        for(var field : table.getFields()) {
-            if (field.getName().equals(destName)) {
-                isField = true;
-                fieldType = field.getType().getName();
-                break;
+            boolean found = false;
+            for (String key : currentRegisters.keySet()) {
+                if (key.startsWith("temp_")) {
+                    found = true;
+                    break;
+                }
             }
-        }
-        if(table.getParameters(currentMethod).stream().anyMatch(param -> param.getName().equals(destName)) ||
-                table.getLocalVariables(currentMethod).stream().anyMatch(varDecl -> varDecl.getName().equals(destName))) {
-            isField = false;
-        }
+            if(found)
+                updateRegisters(assignStmt);
 
-        if(fieldType.equals("int"))
-            fieldType = "I";
-        else if(fieldType.equals("boolean"))
-            fieldType = "Z";
+            if(!assignStmt.getDescendants("BinaryExpr").isEmpty()){
+                if(checkForIinc(assignStmt, code)){
+                    code.append("iinc ").append(reg).append(" ").append(assignStmt.getChild(1).getChild(1).get("value")).append(NL);
+                    return code.toString();
+                }
+            }
 
-        String literalType = assignStmt.getChild(1).getKind();
-        switch (literalType) {
-            case "This":
-                code.append("invokespecial ").append(table.getClassName()).append("/<init>()V").append(NL);
-            case "NewOpObject":
-                code.append("astore ").append(reg).append(NL);
-                break;
-            case "IntegerLiteral", "BooleanLiteral":
-                if(isField)
-                    code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
-                else
-                    code.append("istore ").append(reg).append(NL);
-                break;
+            // generate code that will put the value on the right on top of the stack
+            exprGenerator.visit(assignStmt.getChild(1), code);
+
+            boolean isField = false;
+            var fieldType = "empty";
+            for(var field : table.getFields()) {
+                if (field.getName().equals(destName)) {
+                    isField = true;
+                    fieldType = field.getType().getName();
+                    break;
+                }
+            }
+            if(table.getParameters(currentMethod).stream().anyMatch(param -> param.getName().equals(destName)) ||
+                    table.getLocalVariables(currentMethod).stream().anyMatch(varDecl -> varDecl.getName().equals(destName))) {
+                isField = false;
+            }
+
+            if(fieldType.equals("int"))
+                fieldType = "I";
+            else if(fieldType.equals("boolean"))
+                fieldType = "Z";
+
+            String literalType = assignStmt.getChild(1).getKind();
+            switch (literalType) {
+                case "This":
+                    code.append("invokespecial ").append(table.getClassName()).append("/<init>()V").append(NL);
+                case "NewOpObject", "NewOpArray":
+                    exprGenerator.loadAStore(reg, code);
+                    break;
+                case "IntegerLiteral", "BooleanLiteral":
+                    if(isField)
+                        code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
+                    else
+                        exprGenerator.loadIStore(reg, code);
+                    break;
+            }
+
+            return code.toString();
         }
-
-        return code.toString();
     }
 
     private String visitReturnStmt(JmmNode returnStmt, Void unused) {
@@ -365,7 +504,6 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         switch(returnType.getName()){
             case "int", "boolean":
-                code.append(NL);
                 code.append("ireturn").append(NL);
                 break;
             case "void":

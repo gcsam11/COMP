@@ -1,9 +1,11 @@
-class PropSimple {
+class constFolding {
     public int foo(){
-	  int a;
-	  a = 10;
+      int a;
+
+	  a = 10 + 5;
 	  return a;
 	}
+
     public static void main(String[] args) {
 
     }
