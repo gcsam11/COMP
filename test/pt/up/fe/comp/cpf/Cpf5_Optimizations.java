@@ -194,5 +194,14 @@ public class Cpf5_Optimizations {
         CpUtils.matches(optimized, "(bipush|sipush|ldc) 10\\s+imul");
     }
 
+    @Test
+    public void section3_constant_folding(){
+        JasminResult jasminResult = getJasminResult("constFolding.jmm");
+        CpUtils.matches(jasminResult, "bipush 15");
+        System.out.println(jasminResult.getJasminCode());
+    }
+
+
+
 
 }

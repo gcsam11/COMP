@@ -21,6 +21,7 @@ public class JmmAnalysisImpl implements JmmAnalysis {
     public JmmAnalysisImpl() {
 
         this.analysisPasses = List.of(new UndeclaredSymbol(),
+                new ConstantFolding(),
                 new ArrayAccessOnInt(),
                 new ArrayIndexNotInt(),
                 new WrongInit(),
