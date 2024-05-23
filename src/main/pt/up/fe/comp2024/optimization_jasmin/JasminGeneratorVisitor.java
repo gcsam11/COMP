@@ -199,13 +199,9 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         // initialize register map and set parameters
         currentRegisters = new HashMap<>();
-        var isUsed = false;
-        var identifiers = methodDecl.getDescendants("Identifier");
         for (var param : methodDecl.getChildren("ParamDecl")) {
-            if(!methodName.equals("main")){
-                currentRegisters.put(param.get("var"), nextRegister);
-                nextRegister++;
-            }
+            currentRegisters.put(param.get("var"), nextRegister);
+            nextRegister++;
         }
 
         currNumInStack = 0;
@@ -309,6 +305,9 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         code.append(".limit stack 99").append(NL);
 
+        for(var registers: currentRegisters.entrySet()){
+            System.out.println(registers.getKey() + " " + registers.getValue());
+        }
         var locals = calculateLocals(methodDecl);
         code.append(".limit locals ").append(locals).append(NL);
 

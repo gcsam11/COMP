@@ -308,4 +308,9 @@ public class Cpf4_Jasmin {
         // Make sure the code compiles
         jasminResult.compile();
     }
+
+    @Test
+    public void section7_invokeVirtualImportAndClass(){
+        CpUtils.runJasmin(getJasminResult("invokeVirtualImport.ollir"), "Result: 1");
+    }
 }

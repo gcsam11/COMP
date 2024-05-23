@@ -5,6 +5,7 @@ import pt.up.fe.comp.jmm.ast.JmmNode;
 import pt.up.fe.comp.jmm.report.Report;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Represents an analysis pass.
@@ -20,4 +21,5 @@ public interface AnalysisPass {
      */
     List<Report> analyze(JmmNode root, SymbolTable table);
 
+    void setConfig(Map<String, String> config);
 }

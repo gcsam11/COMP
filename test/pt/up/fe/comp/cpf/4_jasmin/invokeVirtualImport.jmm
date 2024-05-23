@@ -1,0 +1,17 @@
+import ioPlus;
+class invokeVirtualImport {
+
+    public static void main(String[] args) {
+        invokeVirtualImport a;
+        a = new invokeVirtualImport();
+        a.func();
+	}
+
+    public int func(){
+        ioPlus a;
+        a = new ioPlus();
+        a.printResult(10);
+        ioPlus.printResult(10);
+        return 1;
+    }
+}

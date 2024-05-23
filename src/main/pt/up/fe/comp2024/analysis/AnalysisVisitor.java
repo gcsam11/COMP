@@ -7,6 +7,7 @@ import pt.up.fe.comp.jmm.report.Report;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -14,6 +15,7 @@ import java.util.List;
 public abstract class AnalysisVisitor extends PreorderJmmVisitor<SymbolTable, Void> implements AnalysisPass {
 
     private List<Report> reports;
+    private Map<String, String> config;
 
     public AnalysisVisitor() {
         reports = new ArrayList<>();
@@ -37,4 +39,13 @@ public abstract class AnalysisVisitor extends PreorderJmmVisitor<SymbolTable, Vo
         // Return reports
         return getReports();
     }
+
+    public void setConfig(Map<String, String> config) {
+        this.config = config;
+    }
+
+    public Map<String, String> getConfig() {
+        return config;
+    }
+
 }
