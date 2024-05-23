@@ -184,15 +184,17 @@ public class Cpf4_Jasmin {
     @Test
     public void section5_Arrays_Init_Array() {
         CpUtils.runJasmin(getJasminResult("arrays/ArrayNew.ollir"), "Result: 5");
+        var jasminResult = getJasminResult("arrays/ArrayNew.ollir");
+        System.out.println(jasminResult.getJasminCode());
 
     }
 
     /*checks if the access to the elements of array is correct*/
     @Test
     public void section5_Arrays_Store_Array() {
-        CpUtils.runJasmin(getJasminResult("arrays/ArrayAccess.ollir"),
-                "Result: 1\nResult: 2\nResult: 3\nResult: 4\nResult: 5");
-
+        var jasminResult = getJasminResult("arrays/ArrayAccess.ollir");
+        CpUtils.runJasmin(jasminResult,"Result: 1\nResult: 2\nResult: 3\nResult: 4\nResult: 5");
+        System.out.println(jasminResult.getJasminCode());
     }
 
     /*checks multiple expressions as indexes to access the elements of an array*/
@@ -215,7 +217,9 @@ public class Cpf4_Jasmin {
     /*checks if array is being passed correctly as an argument to a function*/
     @Test
     public void section5_Arrays_As_Arg_Simple() {
-        CpUtils.runJasmin(getJasminResult("arrays/ArrayAsArg.ollir"), "Result: 2");
+        var jasminResult = getJasminResult("arrays/ArrayAsArg.ollir");
+        CpUtils.runJasmin(jasminResult, "Result: 2");
+        System.out.println(jasminResult.getJasminCode());
     }
 
     /*checks if array is being passed correctly as an argument to a function (index of aload > 1)*/
@@ -260,6 +264,7 @@ public class Cpf4_Jasmin {
     public void section6_Limits_Locals_Simple() {
 
         var jasminResult = getJasminResult("limits/LocalLimits.ollir");
+        System.out.println(jasminResult.getJasminCode());
         var methodCode = CpUtils.getJasminMethod(jasminResult);
         var numLocals = Integer.parseInt(SpecsStrings.getRegexGroup(methodCode, CpUtils.getLimitLocalsRegex(), 1));
 
@@ -302,5 +307,13 @@ public class Cpf4_Jasmin {
 
         // Make sure the code compiles
         jasminResult.compile();
+    }
+
+    @Test
+    public void section7_invokeVirtualImportAndClass(){
+        var jasminResult = getJasminResult("invokeVirtualImport.ollir");
+
+        CpUtils.runJasmin(jasminResult, "1");
+
     }
 }

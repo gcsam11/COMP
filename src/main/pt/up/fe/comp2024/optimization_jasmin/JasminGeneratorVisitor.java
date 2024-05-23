@@ -52,25 +52,36 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit("WhileStmt", this::visitWhileStmt);
     }
 
-    private void updateRegisters() {
+    private void updateRegisters(JmmNode AssignStmt) {
+        var methodDecl = AssignStmt.getAncestor("MethodDecl").get();
         var noDuplicateRegisterNumbers = new HashMap<String, Integer>();
 
         // check for duplicate registers
         for (var entry : currentRegisters.entrySet()) {
-            if (!entry.getKey().startsWith("temp_")) {
-                if (!noDuplicateRegisterNumbers.containsValue(entry.getValue())) {
-                    noDuplicateRegisterNumbers.put(entry.getKey(), entry.getValue());
-                } else {
-                    // if duplicate, find a new register number
-                    var newRegister = nextRegister;
-                    while (noDuplicateRegisterNumbers.containsValue(newRegister)) {
-                        newRegister++;
-                    }
-                    noDuplicateRegisterNumbers.put(entry.getKey(), newRegister);
+            if (!entry.getKey().equals("temp_" + entry.getValue()) && methodDecl.getChildren("ParamDecl").stream().anyMatch(param -> param.get("var").equals(entry.getKey()))) {
+                noDuplicateRegisterNumbers.put(entry.getKey(), entry.getValue());
+            } else {
+                if (entry.getKey().equals("temp_" + entry.getValue())) {
+                    noDuplicateRegisterNumbers.put("temp_" + entry.getValue(), entry.getValue());
                 }
             }
         }
+
+        String previousEntryName = "";
+        Integer previousEntryValue = -1;
+
+        // recheck for duplicate registers of non ParamDecl variables
+        for(var registers: currentRegisters.entrySet()){
+            if(!previousEntryName.equals(registers.getKey()) && previousEntryValue == registers.getValue() && !previousEntryName.equals("temp_" + previousEntryValue)){
+                noDuplicateRegisterNumbers.put(previousEntryName, noDuplicateRegisterNumbers.size() + 1);
+            }
+            previousEntryName = registers.getKey();
+            previousEntryValue = registers.getValue();
+        }
+
         currentRegisters = noDuplicateRegisterNumbers;
+        nextRegister = currentRegisters.size();
+        exprGenerator.setRegisters(currentRegisters, nextRegister);
     }
 
 
@@ -157,9 +168,28 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         return code.toString();
     }
 
+    private int calculateLocals(JmmNode methodDecl){
+        int locals = 0;
+        var params = methodDecl.getChildren("ParamDecl");
+        // add params that were not used
+        for(var param: params){
+            if(!currentRegisters.containsKey(param.get("var"))){
+                locals++;
+            }
+        }
+
+        if(methodDecl.getObject("isStatic",Boolean.class)){
+            locals += currentRegisters.size();
+        }
+        else{
+            locals += currentRegisters.size()+1;
+        }
+
+        return locals;
+    }
+
     private String visitMethodDecl(JmmNode methodDecl, Void unused) {
         var methodName = methodDecl.get("name");
-        var locals = 0;
         // set method
         currentMethod = methodName;
 
@@ -266,7 +296,6 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             // Get code for statement, split into lines and insert the necessary indentation
             var instCode = StringLines.getLines(visit(stmt)).stream()
                     .collect(Collectors.joining(NL + TAB, TAB, NL));
-
             code_rest.append(instCode);
             if(stmt.getKind().equals("IfElseStmt") || stmt.getKind().equals("WhileStmt")) { //Label for code to jump into after if statement
                 code_rest.append(TAB).append(createReverseLabelName(stmt)).append(":").append(NL);
@@ -278,13 +307,10 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         code_rest.append(".end method\n");
 
-        code.append(".limit stack 99").append(NL);
-        if(methodDecl.getObject("isStatic",Boolean.class)){
-            code.append(".limit locals ").append(currentRegisters.size()).append(NL);
-        }
-        else{
-            code.append(".limit locals ").append(currentRegisters.size()+1).append(NL);
-        }
+        //code.append(".limit stack 99").append(NL);
+        code.append(".limit stack ").append(exprGenerator.getMaxInStack()).append(NL);
+        var locals = calculateLocals(methodDecl);
+        code.append(".limit locals ").append(locals).append(NL);
 
         // reset information
         exprGenerator = null;
@@ -377,6 +403,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         if(isField){
             code.append("aload_0").append(NL);
+            exprGenerator.updateCurrNumInStack(1);
         }
     }
 
@@ -386,16 +413,6 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         // store value in top of the stack in destination
         var lhs = assignStmt.getChild(0);
         SpecsCheck.checkArgument(lhs.isInstance("Identifier") || lhs.isInstance("This") || lhs.isInstance("ParenOp") || lhs.isInstance("ArrayAccessOp"), () -> "Expected a node of type 'Identifier', but instead got '" + lhs.getKind() + "'");
-
-        boolean found = false;
-        for (String key : currentRegisters.keySet()) {
-            if (key.startsWith("temp_")) {
-                found = true;
-                break;
-            }
-        }
-        if(found)
-            updateRegisters();
 
         String destName;
         if(lhs.isInstance("ArrayAccessOp")) {
@@ -409,6 +426,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             exprGenerator.visit(assignStmt.getChild(1), code);
 
             code.append("iastore").append(NL);
+            exprGenerator.updateCurrNumInStack(-3);
 
             return code.toString();
         }
@@ -426,6 +444,16 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 currentRegisters.put(destName, reg);
                 nextRegister++;
             }
+
+            boolean found = false;
+            for (String key : currentRegisters.keySet()) {
+                if (key.startsWith("temp_")) {
+                    found = true;
+                    break;
+                }
+            }
+            if(found)
+                updateRegisters(assignStmt);
 
             if(!assignStmt.getDescendants("BinaryExpr").isEmpty()){
                 if(checkForIinc(assignStmt, code)){
@@ -460,12 +488,16 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             switch (literalType) {
                 case "This":
                     code.append("invokespecial ").append(table.getClassName()).append("/<init>()V").append(NL);
+                    exprGenerator.updateCurrNumInStack(-1); // objectref
+                    exprGenerator.updateCurrNumInStack(1); // result
                 case "NewOpObject", "NewOpArray":
                     exprGenerator.loadAStore(reg, code);
                     break;
                 case "IntegerLiteral", "BooleanLiteral":
-                    if(isField)
+                    if(isField) {
                         code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
+                        exprGenerator.updateCurrNumInStack(-2);
+                    }
                     else
                         exprGenerator.loadIStore(reg, code);
                     break;
