@@ -174,8 +174,12 @@ public class TypeUtils {
             return table.getReturnType(memberAccess.get("func"));
         }
         else {
-            return getExprType(memberAccess.getChild(0), table, currentMethod);
+            if(memberAccess.getAncestor("AssignStmt").isPresent()){
+                var assignStmt = memberAccess.getAncestor("AssignStmt").get();
+                return getExprType(assignStmt.getChild(0), table, currentMethod);
+            }
         }
+        return getExprType(memberAccess.getChild(0), table, currentMethod);
     }
 
     /**
