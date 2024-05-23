@@ -210,7 +210,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             default -> throw new NotImplementedException(binaryExpr.get("op"));
         };
 
-        if(binaryExpr.getParent().getKind().equals("IfElseStmt")) {
+        if(binaryExpr.getParent().getKind().equals("IfElseStmt") || binaryExpr.getParent().getKind().equals("WhileStmt")) {
             code.append(op).append(" ");
             return null;
         }

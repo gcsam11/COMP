@@ -25,7 +25,6 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
     private int nextRegister;
     private int currNumInStack;
     private int maxInStack;
-    private static int BRANCH_LABEL_NUMBER = 1;
 
     private Map<String, Integer> currentRegisters;
 
@@ -50,6 +49,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit("ReturnStmt", this::visitReturnStmt);
         addVisit("ExprStmt", this::visitExprStmt);
         addVisit("IfElseStmt", this::visitIfElseStmt);
+        addVisit("WhileStmt", this::visitWhileStmt);
     }
 
     private void updateRegisters() {
@@ -268,8 +268,8 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                     .collect(Collectors.joining(NL + TAB, TAB, NL));
 
             code_rest.append(instCode);
-            if(stmt.getKind().equals("IfElseStmt")) { //Label for code to jump into after if statement
-                code_rest.append(createReverseLabelName(stmt)).append(":").append(NL);
+            if(stmt.getKind().equals("IfElseStmt") || stmt.getKind().equals("WhileStmt")) { //Label for code to jump into after if statement
+                code_rest.append(TAB).append(createReverseLabelName(stmt)).append(":").append(NL);
             }
         }
 
@@ -546,6 +546,32 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         return code.toString();
     }
 
+    private String visitWhileStmt(JmmNode whileStmt, Void unused) {
+        var code = new StringBuilder();
+
+        //label to start loop
+        String labelName = createLabelName(whileStmt);
+        code.append(labelName).append(":").append(NL);
+
+        //label to jump to after loop
+        JmmNode masterLbl = whileStmt;
+        while(!masterLbl.getParent().getKind().equals("MethodDecl")) {
+            masterLbl = masterLbl.getParent();
+        }
+        String goToLabelName = createReverseLabelName(masterLbl);
+
+        //generate code to compare
+        exprGenerator.visit(whileStmt.getChild(0), code);
+        code.append(goToLabelName).append(NL);
+
+        //generate code to loop in
+        dealWithStatementsHelper(whileStmt.getChild(1), code);
+
+        code.append("goto ").append(labelName).append(NL);
+
+        return code.toString();
+    }
+
     private void dealWithStatements(JmmNode trueOrFalseStmt, StringBuilder code, String labelName, boolean stmt) {
         //if(trueOrFalseStmt.getKind().equals("BinaryExpr")) exprGenerator.visit(trueOrFalseStmt.getChild(0), code);
 
@@ -562,14 +588,18 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
     private void dealWithStatementsHelper(JmmNode trueOrFalseStmt, StringBuilder code) {
         if(trueOrFalseStmt.getKind().equals("BlockStmt")) {
             for(JmmNode exprStmt : trueOrFalseStmt.getChildren()) {
-                if(exprStmt.getKind().equals("IfElseStmt"))
+                if(exprStmt.getKind().equals("IfElseStmt") ||
+                        exprStmt.getKind().equals("WhileStmt") ||
+                        exprStmt.getKind().equals("AssignStmt"))
                     code.append(visit(exprStmt));
-                else
+                else if(exprStmt.getKind().equals("ExprStmt"))
                     exprGenerator.visit(exprStmt.getChild(0), code);
             }
         } else if(trueOrFalseStmt.getKind().equals("ExprStmt")) {
             exprGenerator.visit(trueOrFalseStmt.getChild(0), code);
-        } else if(trueOrFalseStmt.getKind().equals("IfElseStmt")) {
+        } else if(trueOrFalseStmt.getKind().equals("IfElseStmt") ||
+                trueOrFalseStmt.getKind().equals("WhileStmt") ||
+                trueOrFalseStmt.getKind().equals("AssignStmt")) {
             code.append(visit(trueOrFalseStmt));
         }
     }
