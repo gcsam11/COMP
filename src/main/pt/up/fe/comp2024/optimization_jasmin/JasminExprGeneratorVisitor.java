@@ -51,14 +51,30 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         addVisit("ArrayCreationOp", this::visitArrayCreationOp);
     }
 
+    public void setCurrNumInStack(int value){
+        currNumInStack = value;
+    }
+
+    public void setMaxInStack(int value){
+        maxInStack = value;
+    }
+
+    public void updateCurrNumInStack(int value){
+        currNumInStack += value;
+        updateMaxInStack();
+    }
+
+    public int getCurrNumInStack(){
+        return currNumInStack;
+    }
+
     public int getMaxInStack(){
         return maxInStack;
     }
 
-    public void setRegisters(Map<String, Integer> registers, int nextRegister){
+    public void setRegisters(Map<String, Integer> registers, int nextRegisterHelp){
         currentRegisters.clear();
         currentRegisters.putAll(registers);
-        currNumInStack = nextRegister;
     }
 
     public void updateMaxInStack(){
@@ -72,7 +88,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             code.append("istore_").append(reg).append(NL);
         else
             code.append("istore ").append(reg).append(NL);
-        currNumInStack--;
+        updateCurrNumInStack(-1);
     }
 
     public void loadILoad(int reg, StringBuilder code) {
@@ -80,8 +96,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             code.append("iload_").append(reg).append(NL);
         else
             code.append("iload ").append(reg).append(NL);
-        currNumInStack++;
-        updateMaxInStack();
+        updateCurrNumInStack(1);
     }
 
     public void loadAStore(int reg, StringBuilder code) {
@@ -89,7 +104,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             code.append("astore_").append(reg).append(NL);
         else
             code.append("astore ").append(reg).append(NL);
-        currNumInStack--;
+        updateCurrNumInStack(-1);
     }
 
     public void loadALoad(int reg, StringBuilder code) {
@@ -97,8 +112,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             code.append("aload_").append(reg).append(NL);
         else
             code.append("aload ").append(reg).append(NL);
-        currNumInStack++;
-        updateMaxInStack();
+        updateCurrNumInStack(1);
     }
 
     private Void checkConstantSize(int size, StringBuilder code) {
@@ -117,14 +131,22 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         else{
             code.append("ldc ").append(size).append(NL);
         }
-        currNumInStack++;
-        updateMaxInStack();
+        updateCurrNumInStack(1);
         return null;
     }
 
     private Void visitIntegerLiteral(JmmNode integerLiteral, StringBuilder code) {
-        if(integerLiteral.getParent().getKind().equals("ArrayCreationOp")){
+        if(integerLiteral.getParent().getKind().equals("ArrayCreationOp")
+                || integerLiteral.getParent().getKind().equals("MemberAccessOp")){
             return null;
+        }
+        if(integerLiteral.getParent().getKind().equals("ArrayAccessOp")){
+            if(!integerLiteral.getAncestor("AssignStmt").isEmpty()){
+                var assignStmtLeftSideDescendants = integerLiteral.getAncestor("AssignStmt").get().getChild(0).getDescendants();
+                if(!assignStmtLeftSideDescendants.contains(integerLiteral)){
+                    return null;
+                }
+            }
         }
         if(integerLiteral.getAncestor("BinaryExpr").isPresent()){
             if(integerLiteral.getAncestor("BinaryExpr").get().hasAttribute("value")){
@@ -143,14 +165,18 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             default -> "";
         };
         code.append("iconst_").append(value).append(NL);
-        currNumInStack++;
-        updateMaxInStack();
+        updateCurrNumInStack(1);
         return null;
     }
 
     private Void visitIdentifier(JmmNode idExpr, StringBuilder code) {
-        if(idExpr.getParent().equals("VarDecl")){
-            return null;
+        if(idExpr.getParent().getKind().equals("ArrayAccessOp")){
+            if(!idExpr.getAncestor("AssignStmt").isEmpty()){
+                var assignStmtLeftSideDescendants = idExpr.getAncestor("AssignStmt").get().getChild(0).getDescendants();
+                if(!assignStmtLeftSideDescendants.contains(idExpr)){
+                    return null;
+                }
+            }
         }
         var name = idExpr.get("value");
         var type = TypeUtils.getExprType(idExpr, table, currentMethod);
@@ -195,10 +221,10 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         if(isField) {
             var identifierBeingAssigned = currentRegisters.get(idExpr.getParent().getChild(0).get("value"));
             code.append("aload_0").append(NL);
-            currNumInStack++;
-            updateMaxInStack();
+            updateCurrNumInStack(1);
             code.append("getfield ").append(table.getClassName()).append("/").append(name).append(" ").append(fieldTypeString).append(NL);
-            currNumInStack--;
+            updateCurrNumInStack(-1); // consumes objectref
+            updateCurrNumInStack(1); // puts result
             loadIStore(identifierBeingAssigned, code);
             loadILoad(identifierBeingAssigned, code);
         } else {
@@ -225,11 +251,20 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             case "*" -> "imul";
             case "+" -> "iadd";
             case "-" -> "isub";
-            case "<" -> "iflt"; // fazer manualmente, if i < 7 return 1 else return 0
+            case "<" -> "iflt";
             case "&&" -> "iand";
             default -> throw new NotImplementedException(binaryExpr.get("op"));
         };
 
+        switch(op){
+            case "iflt":
+                updateCurrNumInStack(-1);
+                break;
+            default:
+                updateCurrNumInStack(-2);
+                updateCurrNumInStack(1);
+                break;
+        }
         code.append(op).append(NL);
 
         var parent = binaryExpr.getParent();
@@ -258,7 +293,6 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                     currentRegisters.put(name, regAssign);
                 }
                 if(currentRegisters.containsKey("temp_" + regAssign)){
-                    // TODO - CHECK
                     if(currentRegisters.containsValue(0)) regAssign = currentRegisters.size();
                     else regAssign = currentRegisters.size() + 1;
                     currentRegisters.remove(name);
@@ -313,26 +347,24 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                     .replace(" ", "")
                     .replace(",","/");
             code.append("new ").append(classes).append(NL);
-            currNumInStack++;
-            updateMaxInStack();
+            updateCurrNumInStack(1);
             code.append("dup").append(NL);
-            currNumInStack++;
-            updateMaxInStack();
+            updateCurrNumInStack(1);
             code.append("invokespecial ").append(classes).append("/<init>()V").append(NL);
-            currNumInStack--;
+            updateCurrNumInStack(-1);
+            updateCurrNumInStack(1);
             return null;
         }
         else{
             code.append("new ").append(newOp.get("value")).append(NL);
-            currNumInStack++;
-            updateMaxInStack();
+            updateCurrNumInStack(1);
             code.append("dup" + NL);
-            currNumInStack++;
-            updateMaxInStack();
+            updateCurrNumInStack(1);
             loadAStore(reg, code);
             loadALoad(reg, code);
             code.append("invokespecial ").append(newOp.get("value")).append("/<init>()V").append(NL);
-            currNumInStack--;
+            updateCurrNumInStack(-1);
+            updateCurrNumInStack(1);
             return null;
         }
     }
@@ -359,10 +391,12 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             currentRegisters.put(name, reg);
         }
         // aload object if it is a class method and not directly from import
-        if(!firstChild.getKind().equals("This") && !table.getImports().contains(firstChild.get("value"))){
+        if(!firstChild.getKind().equals("This") && !table.getImports().contains(name)){
             loadALoad(reg, code);
         }
+
         // load parameters
+        var numOfParams = memberAccessOp.getNumChildren() - 1;
         for(var child : memberAccessOp.getChildren().subList(1, memberAccessOp.getNumChildren())) {
             if (child.getKind().equals("ParenOp")) {
                 for (var grandChild : child.getDescendants()) {
@@ -378,14 +412,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             if(child.getKind().equals("LengthOp")) {
                 childName = child.getChild(0).get("value") + ".length";
             } else if (child.getKind().equals("ArrayAccessOp")) {
-                if (numberOfArrayAccessCall.containsKey(child.getChild(0).get("value"))) {
-                    childName = child.getChild(0).get("value") + "[" + numberOfArrayAccessCall.get(child.getChild(0).get("value")) + "]";
-                    numberOfArrayAccessCall.replace(child.getChild(0).get("value"), numberOfArrayAccessCall.get(child.getChild(0).get("value")) + 1);
-                } else {
-                    numberOfArrayAccessCall.put(child.getChild(0).get("value"), 0);
-                    childName = child.getChild(0).get("value") + "[" + numberOfArrayAccessCall.get(child.getChild(0).get("value")) + "]";
-                    numberOfArrayAccessCall.replace(child.getChild(0).get("value"), numberOfArrayAccessCall.get(child.getChild(0).get("value")) + 1);
-                }
+                childName = child.getChild(0).get("value");
             } else if (child.getKind().equals("BinaryExpr")) {
                     if(currentRegisters.containsValue(0)) reg = currentRegisters.size();
                     else reg = currentRegisters.size() + 1;
@@ -426,10 +453,10 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                 else if(fieldType.getName().equals("boolean"))
                     fieldTypeString = "Z";
                 code.append("aload_0").append(NL);
-                currNumInStack++;
-                updateMaxInStack();
+                updateCurrNumInStack(1);
                 code.append("getfield ").append(table.getClassName()).append("/").append(childName).append(" ").append(fieldTypeString).append(NL);
-                currNumInStack--;
+                updateCurrNumInStack(-1);
+                updateCurrNumInStack(1);
                 reg = currentRegisters.get(childName);
 
                 // If no mapping, variable has not been assigned yet, create mapping
@@ -460,23 +487,29 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                         loadALoad(currentRegisters.get(childName), code);
                     }
                 }
+                else if (child.getKind().equals("IntegerLiteral")){
+                    checkConstantSize(Integer.parseInt(child.get("value")), code);
+                }
             }
         }
 
         // TODO - Check if it removes from stack
         if(firstChild.getKind().equals("This")){
             code.append("invokevirtual ");
-            currNumInStack--;
+            updateCurrNumInStack(-1);
+            updateCurrNumInStack(-numOfParams);
+            updateCurrNumInStack(1);
         }
-        else if(table.getImports().contains(memberAccessType.getName()) || table.getMethods().contains(memberAccessType.getName())){
+        else if(table.getImports().contains(name) || table.getMethods().contains(memberAccessType.getName())){
             code.append("invokestatic ");
-            if(!table.getImports().contains(memberAccessType.getName())){
-                currNumInStack--;
-            }
+            updateCurrNumInStack(-numOfParams);
+            updateCurrNumInStack(1);
         }
         else{
             code.append("invokevirtual ");
-            currNumInStack--;
+            updateCurrNumInStack(-1);
+            updateCurrNumInStack(-numOfParams);
+            updateCurrNumInStack(1);
         }
 
         if(isPrimitive){
@@ -541,6 +574,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             }
         }
         code.append(")");
+
         switch(memberAccessType.getName()){
             case "Integer", "int":
                 if(memberAccessType.isArray())
@@ -551,30 +585,9 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             case "Boolean", "boolean":
                 code.append("Z");
                 break;
-            case "Void", "void":
+            default:
                 code.append("V");
                 break;
-            default:
-                var program = memberAccessOp.getParent();
-                while(!program.getKind().equals("Program")) {
-                    program = program.getParent();
-                }
-                var classes = "";
-                for(var imports: program.getDescendants(Kind.IMPORT_DECL)){
-                    if(imports.get("importName").contains(memberAccessType.getName())){
-                        classes = imports.get("importName")
-                                .replace("[", "")
-                                .replace("]", "")
-                                .replace(" ", "")
-                                .replace(",","/");
-                    }
-                }
-                if(table.getImports().contains(name)){
-                    code.append("V");
-                }
-                else{
-                    code.append("L").append(classes).append(";");
-                }
         }
 
         boolean isReturn = true;
@@ -656,13 +669,11 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         if(thisExpr.getParent().getKind().equals("AssignStmt")){
             code.append("new ").append(table.getClassName()).append(NL);
             code.append("dup").append(NL);
-            currNumInStack += 2;
-            updateMaxInStack();
+            updateCurrNumInStack(2);
         }
         else{
             code.append("aload_0").append(NL);
-            currNumInStack++;
-            updateMaxInStack();
+            updateCurrNumInStack(1);
         }
         return null;
     }
@@ -678,7 +689,8 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         }
 
         code.append("newarray int").append(NL);
-        currNumInStack--;
+        updateCurrNumInStack(-1);
+        updateCurrNumInStack(1);
 
         return null;
     }
@@ -694,43 +706,194 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         }
 
         code.append("arraylength").append(NL);
+        updateCurrNumInStack(-1);
+        updateCurrNumInStack(1);
         loadIStore(reg, code);
+        if(lengthOp.getParent().getKind().equals("AssignStmt") || lengthOp.getParent().getKind().equals("BinaryExpr")){
+            loadILoad(reg, code);
+        }
 
         return null;
     }
 
     private Void visitArrayAccessOp(JmmNode arrayAccessOp, StringBuilder code) {
         if(arrayAccessOp.getParent().getKind().equals("ReturnStmt")){
-            var reg = currentRegisters.get(arrayAccessOp.getChild(0).get("value") + "[" + arrayAccessOp.getChild(1).get("value") + "]");
+            var reg = currentRegisters.get(arrayAccessOp.getChild(0).get("value"));
 
             // If no mapping, variable has not been assigned yet, create mapping
             if (reg == null) {
                 if(currentRegisters.containsValue(0)) reg = currentRegisters.size();
                 else reg = currentRegisters.size() + 1;
-                currentRegisters.put(arrayAccessOp.getChild(0).get("value") + "[" + arrayAccessOp.getChild(1).get("value") + "]", reg);
+                currentRegisters.put(arrayAccessOp.getChild(0).get("value"), reg);
             }
 
             code.append("iaload").append(NL);
-            currNumInStack -= 2;
+            updateCurrNumInStack(-2);
+            updateCurrNumInStack(1);
         }
         else if(arrayAccessOp.getParent().getKind().equals("MemberAccessOp")){
             switch(arrayAccessOp.getChild(1).getKind()){
-                case "IntegerLiteral", "BinaryExpr":
-                    var reg = currentRegisters.get(arrayAccessOp.getChild(0).get("value") + "[" + arrayAccessOp.getChild(1) + "]");
+                case "BinaryExpr":
+                    // store the binary result
+                    int regInt = 0;
+                    if(currentRegisters.containsValue(0)) regInt = currentRegisters.size();
+                    else regInt = currentRegisters.size() + 1;
+                    currentRegisters.put("temp_" + regInt, regInt);
+                    loadIStore(regInt, code);
+
+                    var reg = currentRegisters.get(arrayAccessOp.getChild(0).get("value"));
 
                     // If no mapping, variable has not been assigned yet, create mapping
                     if (reg == null) {
                         if(currentRegisters.containsValue(0)) reg = currentRegisters.size();
                         else reg = currentRegisters.size() + 1;
-                        currentRegisters.put(arrayAccessOp.getChild(0).get("value") + "[" + arrayAccessOp.getChild(1) + "]", reg);
+                        currentRegisters.put(arrayAccessOp.getChild(0).get("value"), reg);
                     }
 
+                    loadALoad(reg, code);
+                    // load the result
+                    loadILoad(regInt, code);
                     code.append("iaload").append(NL);
-                    loadIStore(reg, code);
-                    loadILoad(reg, code);
-                    currNumInStack--;
+                    // store temporary for the binary
+                    regInt = 0;
+                    if(currentRegisters.containsValue(0)) regInt = currentRegisters.size();
+                    else regInt = currentRegisters.size() + 1;
+                    currentRegisters.put("temp_" + regInt, regInt);
+                    loadIStore(regInt, code);
+                    loadILoad(regInt, code);
+                    updateCurrNumInStack(-2);
+                    updateCurrNumInStack(1);
+                    break;
+                case "ArrayAccessOp":
+                    // load the inner array
+                    var regArray = currentRegisters.get(arrayAccessOp.getChild(1).getChild(0).get("value"));
+
+                    // If no mapping, variable has not been assigned yet, create mapping
+                    if (regArray == null) {
+                        regArray = currentRegisters.size();
+                        currentRegisters.put(arrayAccessOp.getChild(1).getChild(0).get("value"), regArray);
+                    }
+
+                    loadALoad(regArray, code);
+                    // load the inner array index
+                    checkConstantSize(Integer.parseInt(arrayAccessOp.getChild(1).getChild(1).get("value")), code);
+
+                    code.append("iaload").append(NL);
+                    updateCurrNumInStack(-2);
+                    updateCurrNumInStack(1);
+
+                    // store and load temporary for the array access
+                    int tempreg = 0;
+                    if(currentRegisters.containsValue(0)) tempreg = currentRegisters.size();
+                    else tempreg = currentRegisters.size() + 1;
+                    currentRegisters.put("temp_" + tempreg, tempreg);
+                    loadIStore(tempreg, code);
+
+                    // load the outside array
+                    var regArray2 = currentRegisters.get(arrayAccessOp.getChild(0).get("value"));
+
+                    // If no mapping, variable has not been assigned yet, create mapping
+                    if (regArray2 == null) {
+                        regArray2 = currentRegisters.size();
+                        currentRegisters.put(arrayAccessOp.getChild(0).get("value"), regArray2);
+                    }
+
+                    loadALoad(regArray2, code);
+                    // load the temporary
+                    loadILoad(tempreg, code);
+                    code.append("iaload").append(NL);
+                    updateCurrNumInStack(-2);
+                    updateCurrNumInStack(1);
+
+                    // store and load temporary for the array access
+                    int tempRegInt = 0;
+                    if(currentRegisters.containsValue(0)) tempRegInt = currentRegisters.size();
+                    else tempRegInt = currentRegisters.size() + 1;
+                    currentRegisters.put("temp_" + tempRegInt, tempRegInt);
+                    loadIStore(tempRegInt, code);
+                    loadILoad(tempRegInt, code);
                     break;
                 case "MemberAccessOp":
+                    // load array
+                    var regMemberArray = currentRegisters.get(arrayAccessOp.getChild(0).get("value"));
+
+                    // If no mapping, variable has not been assigned yet, create mapping
+                    if (regMemberArray == null) {
+                        regMemberArray = currentRegisters.size();
+                        currentRegisters.put(arrayAccessOp.getChild(0).get("value"), regMemberArray);
+                    }
+
+                    loadALoad(regMemberArray, code);
+
+                    // search for the member access return register
+                    var regResult = currentRegisters.get(arrayAccessOp.getChild(1).get("func"));
+
+                    // if no mapping, variable has not been assigned yet, create mapping
+                    if (regResult == null) {
+                        if(currentRegisters.containsValue(0)) regResult = currentRegisters.size();
+                        else regResult = currentRegisters.size() + 1;
+                        currentRegisters.put(arrayAccessOp.getChild(1).get("func"), regResult);
+                    }
+
+                    // load the latest temporary register
+                    loadILoad(regResult, code);
+                    code.append("iaload").append(NL);
+                    updateCurrNumInStack(-2);
+
+                    // store and load temporary for the member access
+                    tempreg = 0;
+                    if(currentRegisters.containsValue(0)) tempreg = currentRegisters.size();
+                    else tempreg = currentRegisters.size() + 1;
+                    currentRegisters.put("temp_" + tempreg, tempreg);
+                    loadIStore(tempreg, code);
+                    loadILoad(tempreg, code);
+                    updateCurrNumInStack(1);
+                    break;
+                case "Identifier":
+                    // load array and identifier
+                    regArray2 = currentRegisters.get(arrayAccessOp.getChild(0).get("value"));
+
+                    // If no mapping, variable has not been assigned yet, create mapping
+                    if (regArray2 == null) {
+                        regArray2 = currentRegisters.size();
+                        currentRegisters.put(arrayAccessOp.getChild(0).get("value"), regArray2);
+                    }
+
+                    loadALoad(regArray2, code);
+
+                    var regIdentifier = currentRegisters.get(arrayAccessOp.getChild(1).get("value"));
+
+                    // If no mapping, variable has not been assigned yet, create mapping
+                    if (regIdentifier == null) {
+                        regIdentifier = currentRegisters.size();
+                        currentRegisters.put(arrayAccessOp.getChild(1).get("value"), regIdentifier);
+                    }
+
+                    loadILoad(regIdentifier, code);
+                    code.append("iaload").append(NL);
+                    updateCurrNumInStack(-2);
+
+                    // store and load temporary for the member access
+                    tempRegInt = 0;
+                    if(currentRegisters.containsValue(0)) tempRegInt = currentRegisters.size();
+                    else tempRegInt = currentRegisters.size() + 1;
+                    currentRegisters.put("temp_" + tempRegInt, tempRegInt);
+                    loadIStore(tempRegInt, code);
+                    loadILoad(tempRegInt, code);
+                    updateCurrNumInStack(1);
+                    break;
+                default: // IntegerLiteral
+                    code.append("iaload").append(NL);
+                    updateCurrNumInStack(-2);
+                    updateCurrNumInStack(1);
+
+                    // store and load temporary for the array access
+                    tempRegInt = 0;
+                    if(currentRegisters.containsValue(0)) tempRegInt = currentRegisters.size();
+                    else tempRegInt = currentRegisters.size() + 1;
+                    currentRegisters.put("temp_" + tempRegInt, tempRegInt);
+                    loadIStore(tempRegInt, code);
+                    loadILoad(tempRegInt, code);
                     break;
             }
         }
@@ -744,16 +907,16 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         checkConstantSize(size, code);
 
         code.append("newarray int").append(NL);
-        currNumInStack--;
+        updateCurrNumInStack(-1);
+        updateCurrNumInStack(1);
 
         for(int i = 0; i < variables.size(); i++){
             code.append("dup").append(NL);
-            currNumInStack++;
-            updateMaxInStack();
+            updateCurrNumInStack(1);
             checkConstantSize(i, code);
             checkConstantSize(Integer.parseInt(variables.get(i).get("value")), code);
             code.append("iastore").append(NL);
-            currNumInStack -= 3;
+            updateCurrNumInStack(-3);
         }
 
         var reg = currentRegisters.get(arrayCreationOp.getParent().getChild(0).get("value"));

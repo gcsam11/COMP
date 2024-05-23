@@ -294,7 +294,6 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             // Get code for statement, split into lines and insert the necessary indentation
             var instCode = StringLines.getLines(visit(stmt)).stream()
                     .collect(Collectors.joining(NL + TAB, TAB, NL));
-
             code_rest.append(instCode);
         }
 
@@ -303,11 +302,8 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         code_rest.append(".end method\n");
 
-        code.append(".limit stack 99").append(NL);
-
-        for(var registers: currentRegisters.entrySet()){
-            System.out.println(registers.getKey() + " " + registers.getValue());
-        }
+        //code.append(".limit stack 99").append(NL);
+        code.append(".limit stack ").append(exprGenerator.getMaxInStack()).append(NL);
         var locals = calculateLocals(methodDecl);
         code.append(".limit locals ").append(locals).append(NL);
 
@@ -395,6 +391,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         if(isField){
             code.append("aload_0").append(NL);
+            exprGenerator.updateCurrNumInStack(1);
         }
     }
 
@@ -417,6 +414,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             exprGenerator.visit(assignStmt.getChild(1), code);
 
             code.append("iastore").append(NL);
+            exprGenerator.updateCurrNumInStack(-3);
 
             return code.toString();
         }
@@ -478,12 +476,16 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             switch (literalType) {
                 case "This":
                     code.append("invokespecial ").append(table.getClassName()).append("/<init>()V").append(NL);
+                    exprGenerator.updateCurrNumInStack(-1); // objectref
+                    exprGenerator.updateCurrNumInStack(1); // result
                 case "NewOpObject", "NewOpArray":
                     exprGenerator.loadAStore(reg, code);
                     break;
                 case "IntegerLiteral", "BooleanLiteral":
-                    if(isField)
+                    if(isField) {
                         code.append("putfield ").append(table.getClassName()).append("/").append(destName).append(" ").append(fieldType).append(NL);
+                        exprGenerator.updateCurrNumInStack(-2);
+                    }
                     else
                         exprGenerator.loadIStore(reg, code);
                     break;
