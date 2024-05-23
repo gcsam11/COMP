@@ -196,9 +196,16 @@ public class Cpf5_Optimizations {
 
     @Test
     public void section3_constant_folding(){
-        JasminResult jasminResult = getJasminResult("constFolding.jmm");
-        CpUtils.matches(jasminResult, "bipush 15");
-        System.out.println(jasminResult.getJasminCode());
+        String filename = "constFolding.jmm";
+
+        JasminResult original = getJasminResult(filename);
+        JasminResult optimized = getJasminResultOpt(filename);
+        CpUtils.assertNotEquals("Expected code to change with -o flag\n\nOriginal code:\n" + original.getJasminCode(),
+                original.getJasminCode(), optimized.getJasminCode(),
+                optimized);
+
+        CpUtils.matches(optimized, "bipush 15");
+        System.out.println(optimized.getJasminCode());
     }
 
 

@@ -12,6 +12,7 @@ import pt.up.fe.comp2024.symboltable.JmmSymbolTableBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class JmmAnalysisImpl implements JmmAnalysis {
 
@@ -40,11 +41,14 @@ public class JmmAnalysisImpl implements JmmAnalysis {
 
         SymbolTable table = JmmSymbolTableBuilder.build(rootNode);
 
+        Map<String, String> config = parserResult.getConfig();
+
         List<Report> reports = new ArrayList<>();
 
         // Visit all nodes in the AST
         for (var analysisPass : analysisPasses) {
             try {
+                analysisPass.setConfig(config);
                 var passReports = analysisPass.analyze(rootNode, table);
                 reports.addAll(passReports);
             } catch (Exception e) {
