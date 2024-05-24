@@ -554,10 +554,18 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
 
         String labelName = createLabelName(ifElseStmt);
         JmmNode masterLbl = ifElseStmt;
-        while(!masterLbl.getParent().getKind().equals("MethodDecl")) {
-            masterLbl = masterLbl.getParent();
+        String goToLabelName;
+        if(masterLbl.getAncestor("WhileStmt").isPresent()) {
+            //generate code that codes to rest of while loop
+            goToLabelName = createLabelName(masterLbl.getAncestor("WhileStmt").get());
+            goToLabelName += "_rest";
+        } else {
+            while(!masterLbl.getParent().getKind().equals("MethodDecl")) {
+                masterLbl = masterLbl.getParent();
+            }
+            goToLabelName = createReverseLabelName(masterLbl);
         }
-        String goToLabelName = createReverseLabelName(masterLbl);
+
 
         // add compare instruction
         var comp = ifElseStmt.getChild(0);
@@ -618,9 +626,14 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
     }
 
     private void dealWithStatementsHelper(JmmNode trueOrFalseStmt, StringBuilder code) {
-        if(trueOrFalseStmt.getKind().equals("BlockStmt")) {
+        if(trueOrFalseStmt.getKind().equals("BlockStmt")) { //If there is a block of instructions, iterate through them
             for(JmmNode exprStmt : trueOrFalseStmt.getChildren()) {
-                if(exprStmt.getKind().equals("IfElseStmt") ||
+                if(exprStmt.getKind().equals("IfElseStmt") && exprStmt.getAncestor("WhileStmt").isPresent()) {
+                    //Visit the IfElseStmt
+                    code.append(visit(exprStmt));
+                    //Generate label for the rest of the while code
+                    code.append(createLabelName(exprStmt.getAncestor("WhileStmt").get())).append("_rest:").append(NL);
+                } else if(exprStmt.getKind().equals("IfElseStmt") ||
                         exprStmt.getKind().equals("WhileStmt") ||
                         exprStmt.getKind().equals("AssignStmt"))
                     code.append(visit(exprStmt));
