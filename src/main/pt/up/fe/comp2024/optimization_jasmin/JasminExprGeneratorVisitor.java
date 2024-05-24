@@ -259,17 +259,14 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         };
 
         if(binaryExpr.getParent().getKind().equals("IfElseStmt")) {
+            code.append("if_icmplt").append(" ");
             updateCurrNumInStack(-1);
-            code.append("if_cmplt").append(" ");
             return null;
         } else if(binaryExpr.getParent().getKind().equals("WhileStmt")) {
-            updateCurrNumInStack(-1);
             code.append("if_icmpge").append(" ");
+            updateCurrNumInStack(-1);
             return null;
         }
-        int a = 0;
-        int b = 2;
-        boolean pain = b < a;
 
         updateCurrNumInStack(-2);
         updateCurrNumInStack(1);
