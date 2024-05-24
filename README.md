@@ -7,8 +7,8 @@
 
 ## Work Distribution
 
-- Gonçalo Martins - 60%
-- Gabriel Machado Jr. - 40%
+- Gonçalo Martins - 60% (CPF: Arrays, stack and locals, optimization)
+- Gabriel Machado Jr. - 40% (CPF: IfElse Statements, While Statements)
 
 ## Self-Assessment
 
