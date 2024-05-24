@@ -52,10 +52,29 @@ public class ConstantFolding extends AnalysisVisitor {
                     case "/":
                         result = leftValue / rightValue;
                         break;
+                    case "<":
+                        result = leftValue < rightValue ? 1 : 0;
+                        break;
                     default:
                         return null;
                 }
 
+                binaryExpr.put("value", Integer.toString(result));
+            }
+            if(left.getKind().equals("BooleanLiteral") && right.getKind().equals("BooleanLiteral")) {
+                var leftValue = Boolean.parseBoolean(left.get("value"));
+                var rightValue = Boolean.parseBoolean(right.get("value"));
+
+                var operator = binaryExpr.get("op");
+
+                int result = 0;
+                switch(operator) {
+                    case "&&":
+                        result = leftValue && rightValue ? 1 : 0;
+                        break;
+                    default:
+                        return null;
+                }
                 binaryExpr.put("value", Integer.toString(result));
             }
         }

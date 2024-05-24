@@ -208,6 +208,19 @@ public class Cpf5_Optimizations {
         System.out.println(optimized.getJasminCode());
     }
 
+    @Test
+    public void section3_constant_folding2(){
+        String filename = "constFoldingBool.jmm";
+
+        JasminResult original = getJasminResult(filename);
+        JasminResult optimized = getJasminResultOpt(filename);
+        CpUtils.assertNotEquals("Expected code to change with -o flag\n\nOriginal code:\n" + original.getJasminCode(),
+                original.getJasminCode(), optimized.getJasminCode(),
+                optimized);
+
+        System.out.println(optimized.getJasminCode());
+    }
+
 
 
 
