@@ -424,9 +424,30 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             loadALoad(reg, code);
         }
 
+        // check for vararg parameters
+        boolean hasVarargs = false;
+        int numOfDeclParams = 0;
+        var methodDecl = memberAccessOp.getAncestor("ClassDecl").get().getDescendants("MethodDecl");
+        for(var method: methodDecl){
+            if(method.get("name").equals(funcName)){
+                var parameters = method.getChildren("ParamDecl");
+                for(var param: parameters){
+                    numOfDeclParams++;
+                    // check for varargs
+                    var paramType = TypeUtils.getExprType(param, table, currentMethod);
+                    if(paramType.getName().equals("int...")){
+                        hasVarargs = true;
+                    }
+                }
+            }
+        }
+
         // load parameters
+        int count = 0;
+        int varArgsIndex = 0;
         var numOfParams = memberAccessOp.getNumChildren() - 1;
         for(var child : memberAccessOp.getChildren().subList(1, memberAccessOp.getNumChildren())) {
+            count++;
             if (child.getKind().equals("ParenOp")) {
                 for (var grandChild : child.getDescendants()) {
                     if (!grandChild.getKind().equals("ParenOp")) {
@@ -435,69 +456,73 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                 }
             }
 
-            var idType = TypeUtils.getExprType(child, table, currentMethod);
-            String childName;
+            if (hasVarargs && count >= numOfDeclParams) {
+                if (count == numOfDeclParams) {
+                    checkConstantSize(numOfParams - numOfDeclParams + 1, code);
+                    code.append("newarray int").append(NL);
+                    updateCurrNumInStack(-1);
+                    updateCurrNumInStack(1);
+                }
+                code.append("dup").append(NL);
+                updateCurrNumInStack(1);
+                checkConstantSize(varArgsIndex, code);
+                varArgsIndex++;
+                checkConstantSize(Integer.parseInt(child.get("value")), code);
+                code.append("iastore").append(NL);
+                updateCurrNumInStack(-2);
+                updateCurrNumInStack(1);
+            } else {
+                var idType = TypeUtils.getExprType(child, table, currentMethod);
+                String childName;
 
-            if(child.getKind().equals("LengthOp")) {
-                childName = child.getChild(0).get("value") + ".length";
-            } else if (child.getKind().equals("ArrayAccessOp")) {
-                childName = child.getChild(0).get("value");
-            } else if (child.getKind().equals("BinaryExpr")) {
-                    if(currentRegisters.containsValue(0)) reg = currentRegisters.size();
+                if (child.getKind().equals("LengthOp")) {
+                    childName = child.getChild(0).get("value") + ".length";
+                } else if (child.getKind().equals("ArrayAccessOp")) {
+                    childName = child.getChild(0).get("value");
+                } else if (child.getKind().equals("BinaryExpr")) {
+                    if (currentRegisters.containsValue(0)) reg = currentRegisters.size();
                     else reg = currentRegisters.size() + 1;
 
                     currentRegisters.put("temp_" + reg, reg);
                     loadIStore(reg, code);
                     childName = "temp_" + reg;
-            } else if (!child.getKind().equals("MemberAccessOp")) {
-                childName = child.get("value");
-            } else {
-                childName = child.get("func");
-            }
-
-            boolean isField = false;
-            Type fieldType = null;
-            String fieldTypeString = "";
-            for(var field : table.getFields()) {
-                if (field.getName().equals(childName)) {
-                    isField = true;
-                    fieldType = field.getType();
-                    break;
+                } else if (child.getKind().equals("ArrayCreationOp")){
+                    childName = "";
+                } else if (!child.getKind().equals("MemberAccessOp")) {
+                    childName = child.get("value");
+                } else {
+                    childName = child.get("func");
                 }
-            }
-            if (table.getParameters(currentMethod).stream().anyMatch(parameter -> parameter.getName().equals(childName)) ||
-                    table.getLocalVariables(currentMethod).stream().anyMatch(variable -> variable.getName().equals(childName))) {
-                isField = false;
-            }
 
-            if (isField) {
-                if(fieldType.getName().equals("int")) {
-                    if (fieldType.isArray()){
-                        fieldTypeString = "[I";
-                    }
-                    else{
-                        fieldTypeString = "I";
+                boolean isField = false;
+                Type fieldType = null;
+                String fieldTypeString = "";
+                for (var field : table.getFields()) {
+                    if (field.getName().equals(childName)) {
+                        isField = true;
+                        fieldType = field.getType();
+                        break;
                     }
                 }
-                else if(fieldType.getName().equals("boolean"))
-                    fieldTypeString = "Z";
-                code.append("aload_0").append(NL);
-                updateCurrNumInStack(1);
-                code.append("getfield ").append(table.getClassName()).append("/").append(childName).append(" ").append(fieldTypeString).append(NL);
-                updateCurrNumInStack(-1);
-                updateCurrNumInStack(1);
-                reg = currentRegisters.get(childName);
-
-                // If no mapping, variable has not been assigned yet, create mapping
-                if (reg == null) {
-                    reg = currentRegisters.size();
-                    currentRegisters.put(childName, reg);
+                if (table.getParameters(currentMethod).stream().anyMatch(parameter -> parameter.getName().equals(childName)) ||
+                        table.getLocalVariables(currentMethod).stream().anyMatch(variable -> variable.getName().equals(childName))) {
+                    isField = false;
                 }
-                loadIStore(reg, code);
-                loadILoad(reg, code);
-            } else {
-                if (!child.getKind().equals("IntegerLiteral") && !child.getKind().equals("BooleanLiteral")) {
 
+                if (isField) {
+                    if (fieldType.getName().equals("int")) {
+                        if (fieldType.isArray()) {
+                            fieldTypeString = "[I";
+                        } else {
+                            fieldTypeString = "I";
+                        }
+                    } else if (fieldType.getName().equals("boolean"))
+                        fieldTypeString = "Z";
+                    code.append("aload_0").append(NL);
+                    updateCurrNumInStack(1);
+                    code.append("getfield ").append(table.getClassName()).append("/").append(childName).append(" ").append(fieldTypeString).append(NL);
+                    updateCurrNumInStack(-1);
+                    updateCurrNumInStack(1);
                     reg = currentRegisters.get(childName);
 
                     // If no mapping, variable has not been assigned yet, create mapping
@@ -505,24 +530,35 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                         reg = currentRegisters.size();
                         currentRegisters.put(childName, reg);
                     }
+                    loadIStore(reg, code);
+                    loadILoad(reg, code);
+                } else {
+                    if (!child.getKind().equals("IntegerLiteral") && !child.getKind().equals("BooleanLiteral") && !child.getKind().equals("ArrayCreationOp")) {
 
-                    if(child.getKind().equals("ArrayAccessOp")){
-                        // do nothing
-                    } else if (idType.getName().equals(TypeUtils.getIntTypeName()) && !idType.isArray()) {
-                        loadILoad(currentRegisters.get(childName), code);
-                    } else if (idType.getName().equals(TypeUtils.getBooleanTypeName())) {
-                        loadILoad(currentRegisters.get(childName), code);
-                    } else {
-                        loadALoad(currentRegisters.get(childName), code);
+                        reg = currentRegisters.get(childName);
+
+                        // If no mapping, variable has not been assigned yet, create mapping
+                        if (reg == null) {
+                            reg = currentRegisters.size();
+                            currentRegisters.put(childName, reg);
+                        }
+
+                        if (child.getKind().equals("ArrayAccessOp")) {
+                            // do nothing
+                        } else if (idType.getName().equals(TypeUtils.getIntTypeName()) && !idType.isArray()) {
+                            loadILoad(currentRegisters.get(childName), code);
+                        } else if (idType.getName().equals(TypeUtils.getBooleanTypeName())) {
+                            loadILoad(currentRegisters.get(childName), code);
+                        } else {
+                            loadALoad(currentRegisters.get(childName), code);
+                        }
+                    } else if (child.getKind().equals("IntegerLiteral")) {
+                        checkConstantSize(Integer.parseInt(child.get("value")), code);
                     }
-                }
-                else if (child.getKind().equals("IntegerLiteral")){
-                    checkConstantSize(Integer.parseInt(child.get("value")), code);
                 }
             }
         }
 
-        // TODO - Check if it removes from stack
         if(firstChild.getKind().equals("This")){
             code.append("invokevirtual ");
             updateCurrNumInStack(-1);
@@ -571,35 +607,40 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
         code.append(funcName).append("(");
 
-        for(var child : memberAccessOp.getChildren().subList(1, memberAccessOp.getNumChildren())){
+        count = 0;
+        for(var child : memberAccessOp.getChildren().subList(1, memberAccessOp.getNumChildren())) {
+            count++;
             var paramType = TypeUtils.getExprType(child, table, currentMethod);
-            if(paramType.getName().equals(TypeUtils.getIntTypeName())){
-                if(paramType.isArray()){
-                    code.append("[I");
-                }
-                else{
-                    code.append("I");
-                }
+            if (hasVarargs && count == numOfDeclParams) {
+                code.append("[I");
+                break;
             }
-            else if(paramType.getName().equals(TypeUtils.getBooleanTypeName())){
-                code.append("Z");
-            }
-            else if(table.getImports().contains(paramType.getName())){
-                var program = memberAccessOp.getParent();
-                while(!program.getKind().equals("Program")) {
-                    program = program.getParent();
-                }
-                var classes = "";
-                for(var imports: program.getDescendants(Kind.IMPORT_DECL)){
-                    if(imports.get("importName").contains(memberAccessType.getName())){
-                        classes = imports.get("importName")
-                                .replace("[", "")
-                                .replace("]", "")
-                                .replace(" ", "")
-                                .replace(",","/");
+            else {
+                if (paramType.getName().equals(TypeUtils.getIntTypeName())) {
+                    if (paramType.isArray()) {
+                        code.append("[I");
+                    } else {
+                        code.append("I");
                     }
+                } else if (paramType.getName().equals(TypeUtils.getBooleanTypeName())) {
+                    code.append("Z");
+                } else if (table.getImports().contains(paramType.getName())) {
+                    var program = memberAccessOp.getParent();
+                    while (!program.getKind().equals("Program")) {
+                        program = program.getParent();
+                    }
+                    var classes = "";
+                    for (var imports : program.getDescendants(Kind.IMPORT_DECL)) {
+                        if (imports.get("importName").contains(memberAccessType.getName())) {
+                            classes = imports.get("importName")
+                                    .replace("[", "")
+                                    .replace("]", "")
+                                    .replace(" ", "")
+                                    .replace(",", "/");
+                        }
+                    }
+                    code.append("L").append(classes).append(";");
                 }
-                code.append("L").append(classes).append(";");
             }
         }
         code.append(")");
@@ -734,11 +775,12 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         code.append("arraylength").append(NL);
         updateCurrNumInStack(-1);
         updateCurrNumInStack(1);
-        loadIStore(reg, code);
-        if(lengthOp.getParent().getKind().equals("AssignStmt") || lengthOp.getParent().getKind().equals("BinaryExpr")){
-            loadILoad(reg, code);
+        if(!lengthOp.getParent().getKind().equals("BinaryExpr")) {
+            loadIStore(reg, code);
+            if (lengthOp.getParent().getKind().equals("AssignStmt")) {
+                loadILoad(reg, code);
+            }
         }
-
         return null;
     }
 
@@ -953,8 +995,9 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             currentRegisters.put(arrayCreationOp.getParent().getChild(0).get("value"), reg);
         }
 
-        loadAStore(reg, code);
-
+        if(!arrayCreationOp.getParent().getKind().equals("MemberAccessOp")) {
+            loadAStore(reg, code);
+        }
         return null;
     }
 

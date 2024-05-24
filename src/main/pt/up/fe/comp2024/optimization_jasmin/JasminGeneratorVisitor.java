@@ -225,7 +225,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         for(var param : methodDecl.getChildren("ParamDecl")){
             var paramType = TypeUtils.getExprType(param, table, methodDecl.get("name"));
             switch(paramType.getName()){
-                case "int":
+                case "int", "int...":
                     if(paramType.isArray())
                         code.append("[I");
                     else
