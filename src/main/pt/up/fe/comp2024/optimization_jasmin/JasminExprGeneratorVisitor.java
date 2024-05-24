@@ -161,38 +161,18 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
     private Void visitBooleanLiteral(JmmNode booleanLiteral, StringBuilder code) {
         String value;
-        JmmNode actualBooleanLiteral = booleanLiteral;
-
         if(booleanLiteral.getAncestor("BinaryExpr").isPresent()){
             if(booleanLiteral.getAncestor("BinaryExpr").get().hasAttribute("value")){
                 return null;
             }
         }
 
-        while(!booleanLiteral.getKind().equals("UnaryOp")) {
-            booleanLiteral = booleanLiteral.getParent();
-            if(booleanLiteral == null) break;
-        }
-
-        if(booleanLiteral != null) {
-            if(booleanLiteral.getKind().equals("UnaryOp")) {
-                value = switch (actualBooleanLiteral.get("value")) {
-                    case "true" -> "0";
-                    case "false" -> "1";
-                    default -> "";
-                };
-                code.append("iconst_").append(value).append(NL);
-            }
-        } else {
-            value = switch (actualBooleanLiteral.get("value")) {
-                case "true" -> "1";
-                case "false" -> "0";
-                default -> "";
-            };
-            code.append("iconst_").append(value).append(NL);
-        }
-
-        updateCurrNumInStack(1);
+        value = switch (booleanLiteral.get("value")) {
+            case "true" -> "1";
+            case "false" -> "0";
+            default -> "";
+        };
+        checkConstantSize(Integer.parseInt(value), code);
         return null;
     }
 
@@ -278,28 +258,24 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             case "*" -> "imul";
             case "+" -> "iadd";
             case "-" -> "isub";
-            case "<" -> "if_icmplt"; // fazer manualmente, if i < 7 return 1 else return 0
+            case "<" -> "ifne"; // fazer manualmente, if i < 7 return 1 else return 0
             case "&&" -> "iand";
             default -> throw new NotImplementedException(binaryExpr.get("op"));
         };
 
         if(binaryExpr.getParent().getKind().equals("IfElseStmt")) {
-            code.append(op).append(" ");
+            code.append("if_icmplt").append(" ");
+            updateCurrNumInStack(-1);
             return null;
         } else if(binaryExpr.getParent().getKind().equals("WhileStmt")) {
             code.append("if_icmpge").append(" ");
+            updateCurrNumInStack(-1);
             return null;
         }
 
-        switch(op){
-            case "if_icmplt":
-                updateCurrNumInStack(-1);
-                break;
-            default:
-                updateCurrNumInStack(-2);
-                updateCurrNumInStack(1);
-                break;
-        }
+        updateCurrNumInStack(-2);
+        updateCurrNumInStack(1);
+
         code.append(op).append(NL);
 
         var parent = binaryExpr.getParent();
@@ -492,12 +468,15 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                     currentRegisters.put("temp_" + reg, reg);
                     loadIStore(reg, code);
                     childName = "temp_" + reg;
-                } else if (child.getKind().equals("ArrayCreationOp")){
+                } else if (child.getKind().equals("ArrayCreationOp")) {
                     childName = "";
+                } else if (child.getKind().equals("UnaryOp")){
+                    childName = child.getChild(0).get("value");
                 } else if (!child.getKind().equals("MemberAccessOp")) {
                     childName = child.get("value");
                 } else {
                     childName = child.get("func");
+
                 }
 
                 boolean isField = false;
@@ -1008,7 +987,14 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
     }
 
     private Void visitUnaryOp(JmmNode unaryOp, StringBuilder code) {
-        code.append("istore_").append(currNumInStack).append(NL);
+        if(unaryOp.getAncestor("AssignStmt").isPresent()) {
+            var reg = unaryOp.getAncestor("AssignStmt").get().getChild(0).get("value"); // what if its array access?
+            var regInt = currentRegisters.get(reg);
+            code.append("iconst_1").append(NL); // For ixor purposes
+            code.append("ixor").append(NL);
+            code.append("istore_").append(regInt).append(NL);
+            return null;
+        }
         return null;
     }
 }
