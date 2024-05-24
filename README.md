@@ -12,4 +12,4 @@
 
 ## Self-Assessment
 
-- We think our project (CPF delivery) deserves 16/17 out of 20.
+- We think our project (CPF delivery) deserves 15/16 out of 20.
