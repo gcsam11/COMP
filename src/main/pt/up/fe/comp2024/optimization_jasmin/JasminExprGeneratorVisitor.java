@@ -163,6 +163,12 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         String value;
         JmmNode actualBooleanLiteral = booleanLiteral;
 
+        if(booleanLiteral.getAncestor("BinaryExpr").isPresent()){
+            if(booleanLiteral.getAncestor("BinaryExpr").get().hasAttribute("value")){
+                return null;
+            }
+        }
+
         while(!booleanLiteral.getKind().equals("UnaryOp")) {
             booleanLiteral = booleanLiteral.getParent();
             if(booleanLiteral == null) break;

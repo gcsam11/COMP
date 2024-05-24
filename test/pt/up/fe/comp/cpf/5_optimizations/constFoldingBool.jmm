@@ -1,0 +1,12 @@
+class constFolding {
+    public boolean foo(){
+      boolean a;
+
+	  a = true && false;
+	  return a;
+	}
+
+    public static void main(String[] args) {
+
+    }
+}
