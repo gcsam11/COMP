@@ -49,6 +49,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         addVisit("LengthOp", this::visitLengthOp);
         addVisit("ArrayAccessOp", this::visitArrayAccessOp);
         addVisit("ArrayCreationOp", this::visitArrayCreationOp);
+        addVisit("UnaryOp", this::visitUnaryOp);
     }
 
     public void setCurrNumInStack(int value){
@@ -159,12 +160,32 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
     }
 
     private Void visitBooleanLiteral(JmmNode booleanLiteral, StringBuilder code) {
-        String value = switch (booleanLiteral.get("value")) {
-            case "true" -> "1";
-            case "false" -> "0";
-            default -> "";
-        };
-        code.append("iconst_").append(value).append(NL);
+        String value;
+        JmmNode actualBooleanLiteral = booleanLiteral;
+
+        while(!booleanLiteral.getKind().equals("UnaryOp")) {
+            booleanLiteral = booleanLiteral.getParent();
+            if(booleanLiteral == null) break;
+        }
+
+        if(booleanLiteral != null) {
+            if(booleanLiteral.getKind().equals("UnaryOp")) {
+                value = switch (actualBooleanLiteral.get("value")) {
+                    case "true" -> "0";
+                    case "false" -> "1";
+                    default -> "";
+                };
+                code.append("iconst_").append(value).append(NL);
+            }
+        } else {
+            value = switch (actualBooleanLiteral.get("value")) {
+                case "true" -> "1";
+                case "false" -> "0";
+                default -> "";
+            };
+            code.append("iconst_").append(value).append(NL);
+        }
+
         updateCurrNumInStack(1);
         return null;
     }
@@ -251,13 +272,21 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             case "*" -> "imul";
             case "+" -> "iadd";
             case "-" -> "isub";
-            case "<" -> "iflt";
+            case "<" -> "if_icmplt"; // fazer manualmente, if i < 7 return 1 else return 0
             case "&&" -> "iand";
             default -> throw new NotImplementedException(binaryExpr.get("op"));
         };
 
+        if(binaryExpr.getParent().getKind().equals("IfElseStmt")) {
+            code.append(op).append(" ");
+            return null;
+        } else if(binaryExpr.getParent().getKind().equals("WhileStmt")) {
+            code.append("if_icmpge").append(" ");
+            return null;
+        }
+
         switch(op){
-            case "iflt":
+            case "if_icmplt":
                 updateCurrNumInStack(-1);
                 break;
             default:
@@ -590,10 +619,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
                 break;
         }
 
-        boolean isReturn = true;
-        if(memberAccessOp.getParent().getKind().equals("ExprStmt")){
-            isReturn = false;
-        }
+        boolean isReturn = !memberAccessOp.getParent().getKind().equals("ExprStmt");
         if(isReturn && !memberAccessOp.getAncestor("BinaryExpr").isPresent()){
             code.append(NL);
             // Return store
@@ -929,6 +955,11 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
         loadAStore(reg, code);
 
+        return null;
+    }
+
+    private Void visitUnaryOp(JmmNode unaryOp, StringBuilder code) {
+        code.append("istore_").append(currNumInStack).append(NL);
         return null;
     }
 }
