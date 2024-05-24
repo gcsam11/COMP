@@ -48,6 +48,8 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         addVisit("AssignStmt", this::visitAssignStmt);
         addVisit("ReturnStmt", this::visitReturnStmt);
         addVisit("ExprStmt", this::visitExprStmt);
+        addVisit("IfElseStmt", this::visitIfElseStmt);
+        addVisit("WhileStmt", this::visitWhileStmt);
     }
 
     private void updateRegisters(JmmNode AssignStmt) {
@@ -295,6 +297,9 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
             var instCode = StringLines.getLines(visit(stmt)).stream()
                     .collect(Collectors.joining(NL + TAB, TAB, NL));
             code_rest.append(instCode);
+            if(stmt.getKind().equals("IfElseStmt") || stmt.getKind().equals("WhileStmt")) { //Label for code to jump into after if statement
+                code_rest.append(TAB).append(createReverseLabelName(stmt)).append(":").append(NL);
+            }
         }
 
         if(returnType.getName().equals("void"))
@@ -316,6 +321,13 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         code.append(code_rest);
 
         return code.toString();
+    }
+
+    private String createReverseLabelName(JmmNode ifElseStmt) {
+        return "label_" + ifElseStmt.get("lineEnd") +
+                ifElseStmt.get("colStart") +
+                ifElseStmt.get("lineStart") +
+                ifElseStmt.get("colEnd");
     }
 
     private String visitNewOpObject(JmmNode newOp, Void unused) {
@@ -535,5 +547,99 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
                 }
             }
         return auxclasses;
+    }
+
+    private String visitIfElseStmt(JmmNode ifElseStmt, Void unused) {
+        var code = new StringBuilder();
+
+        String labelName = createLabelName(ifElseStmt);
+        JmmNode masterLbl = ifElseStmt;
+        while(!masterLbl.getParent().getKind().equals("MethodDecl")) {
+            masterLbl = masterLbl.getParent();
+        }
+        String goToLabelName = createReverseLabelName(masterLbl);
+
+        // add compare instruction
+        var comp = ifElseStmt.getChild(0);
+        if(comp.getKind().equals("BinaryExpr")) {
+            exprGenerator.visit(ifElseStmt.getChild(0), code);
+            code.append(labelName).append(NL);
+        } else if(comp.getKind().equals("BooleanLiteral") || comp.getKind().equals("Identifier")) {
+            exprGenerator.visit(comp, code);
+            code.append("ifne ").append(labelName).append(NL);
+        }
+
+        var falseBlockStmt = ifElseStmt.getChild(2);
+        var trueBlockStmt = ifElseStmt.getChild(1);
+
+        dealWithStatements(falseBlockStmt, code, goToLabelName, false);
+        dealWithStatements(trueBlockStmt, code, "", true);
+
+        return code.toString();
+    }
+
+    private String visitWhileStmt(JmmNode whileStmt, Void unused) {
+        var code = new StringBuilder();
+
+        //label to start loop
+        String labelName = createLabelName(whileStmt);
+        code.append(labelName).append(":").append(NL);
+
+        //label to jump to after loop
+        JmmNode masterLbl = whileStmt;
+        while(!masterLbl.getParent().getKind().equals("MethodDecl")) {
+            masterLbl = masterLbl.getParent();
+        }
+        String goToLabelName = createReverseLabelName(masterLbl);
+
+        //generate code to compare
+        exprGenerator.visit(whileStmt.getChild(0), code);
+        code.append(goToLabelName).append(NL);
+
+        //generate code to loop in
+        dealWithStatementsHelper(whileStmt.getChild(1), code);
+
+        code.append("goto ").append(labelName).append(NL);
+
+        return code.toString();
+    }
+
+    private void dealWithStatements(JmmNode trueOrFalseStmt, StringBuilder code, String labelName, boolean stmt) {
+        //if(trueOrFalseStmt.getKind().equals("BinaryExpr")) exprGenerator.visit(trueOrFalseStmt.getChild(0), code);
+
+        if(!stmt) {
+            dealWithStatementsHelper(trueOrFalseStmt, code);
+            if(!trueOrFalseStmt.getChild(0).getKind().equals("IfElseStmt") || trueOrFalseStmt.getParent().getKind().equals("IfElseStmt"))
+                code.append("goto ").append(labelName).append(NL);
+        } else {
+            code.append(createLabelName(trueOrFalseStmt.getParent())).append(": ").append(NL);
+            dealWithStatementsHelper(trueOrFalseStmt, code);
+        }
+    }
+
+    private void dealWithStatementsHelper(JmmNode trueOrFalseStmt, StringBuilder code) {
+        if(trueOrFalseStmt.getKind().equals("BlockStmt")) {
+            for(JmmNode exprStmt : trueOrFalseStmt.getChildren()) {
+                if(exprStmt.getKind().equals("IfElseStmt") ||
+                        exprStmt.getKind().equals("WhileStmt") ||
+                        exprStmt.getKind().equals("AssignStmt"))
+                    code.append(visit(exprStmt));
+                else if(exprStmt.getKind().equals("ExprStmt"))
+                    exprGenerator.visit(exprStmt.getChild(0), code);
+            }
+        } else if(trueOrFalseStmt.getKind().equals("ExprStmt")) {
+            exprGenerator.visit(trueOrFalseStmt.getChild(0), code);
+        } else if(trueOrFalseStmt.getKind().equals("IfElseStmt") ||
+                trueOrFalseStmt.getKind().equals("WhileStmt") ||
+                trueOrFalseStmt.getKind().equals("AssignStmt")) {
+            code.append(visit(trueOrFalseStmt));
+        }
+    }
+
+    private String createLabelName(JmmNode ifElseStmt) {
+        return "label_" + ifElseStmt.get("colEnd") +
+                ifElseStmt.get("lineStart") +
+                ifElseStmt.get("colStart") +
+                ifElseStmt.get("lineEnd");
     }
 }

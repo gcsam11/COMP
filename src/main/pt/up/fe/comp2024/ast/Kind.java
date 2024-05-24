@@ -38,7 +38,8 @@ public enum Kind {
     STRING_TYPE,
     IDENTIFIER_TYPE,
     LENGTH_OP,
-    PAREN_OP;
+    PAREN_OP,
+    UNARY_OP;
 
     private static final Set<Kind> STATEMENTS = Set.of(ASSIGN_STMT, RETURN_STMT);
     private static final Set<Kind> EXPRESSIONS = Set.of(BINARY_EXPR, INTEGER_LITERAL, IDENTIFIER);
