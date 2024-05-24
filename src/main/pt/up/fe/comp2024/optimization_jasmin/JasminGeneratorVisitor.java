@@ -564,7 +564,7 @@ public class JasminGeneratorVisitor extends AJmmVisitor<Void, String> {
         if(comp.getKind().equals("BinaryExpr")) {
             exprGenerator.visit(ifElseStmt.getChild(0), code);
             code.append(labelName).append(NL);
-        } else if(comp.getKind().equals("BooleanLiteral")) {
+        } else if(comp.getKind().equals("BooleanLiteral") || comp.getKind().equals("Identifier")) {
             exprGenerator.visit(comp, code);
             code.append("ifne ").append(labelName).append(NL);
         }

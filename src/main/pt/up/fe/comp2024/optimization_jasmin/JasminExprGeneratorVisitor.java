@@ -49,6 +49,7 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
         addVisit("LengthOp", this::visitLengthOp);
         addVisit("ArrayAccessOp", this::visitArrayAccessOp);
         addVisit("ArrayCreationOp", this::visitArrayCreationOp);
+        addVisit("UnaryOp", this::visitUnaryOp);
     }
 
     public void setCurrNumInStack(int value){
@@ -159,12 +160,32 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
     }
 
     private Void visitBooleanLiteral(JmmNode booleanLiteral, StringBuilder code) {
-        String value = switch (booleanLiteral.get("value")) {
-            case "true" -> "1";
-            case "false" -> "0";
-            default -> "";
-        };
-        code.append("iconst_").append(value).append(NL);
+        String value;
+        JmmNode actualBooleanLiteral = booleanLiteral;
+
+        while(!booleanLiteral.getKind().equals("UnaryOp")) {
+            booleanLiteral = booleanLiteral.getParent();
+            if(booleanLiteral == null) break;
+        }
+
+        if(booleanLiteral != null) {
+            if(booleanLiteral.getKind().equals("UnaryOp")) {
+                value = switch (actualBooleanLiteral.get("value")) {
+                    case "true" -> "0";
+                    case "false" -> "1";
+                    default -> "";
+                };
+                code.append("iconst_").append(value).append(NL);
+            }
+        } else {
+            value = switch (actualBooleanLiteral.get("value")) {
+                case "true" -> "1";
+                case "false" -> "0";
+                default -> "";
+            };
+            code.append("iconst_").append(value).append(NL);
+        }
+
         updateCurrNumInStack(1);
         return null;
     }
@@ -256,8 +277,11 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
             default -> throw new NotImplementedException(binaryExpr.get("op"));
         };
 
-        if(binaryExpr.getParent().getKind().equals("IfElseStmt") || binaryExpr.getParent().getKind().equals("WhileStmt")) {
+        if(binaryExpr.getParent().getKind().equals("IfElseStmt")) {
             code.append(op).append(" ");
+            return null;
+        } else if(binaryExpr.getParent().getKind().equals("WhileStmt")) {
+            code.append("if_icmpge").append(" ");
             return null;
         }
 
@@ -931,6 +955,11 @@ public class JasminExprGeneratorVisitor extends PostorderJmmVisitor<StringBuilde
 
         loadAStore(reg, code);
 
+        return null;
+    }
+
+    private Void visitUnaryOp(JmmNode unaryOp, StringBuilder code) {
+        code.append("istore_").append(currNumInStack).append(NL);
         return null;
     }
 }

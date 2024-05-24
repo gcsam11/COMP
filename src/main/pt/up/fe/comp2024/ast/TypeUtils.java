@@ -33,19 +33,15 @@ public class TypeUtils {
 
         Type type = switch (kind) {
             case BINARY_EXPR -> getBinExprType(expr);
-            case IDENTIFIER -> getIdentifierType(expr, table, currentMethod);
+            case IDENTIFIER, VAR_DECL -> getIdentifierType(expr, table, currentMethod);
             case PARAM_DECL -> getParamDeclType(expr, table, currentMethod);
-            case INTEGER_LITERAL -> new Type(INT_TYPE_NAME, false);
+            case INTEGER_LITERAL, LENGTH_OP, ARRAY_ACCESS_OP -> new Type(INT_TYPE_NAME, false);
             case BOOLEAN_LITERAL -> new Type(BOOLEAN_TYPE_NAME, false);
-            case ARRAY_ACCESS_OP -> new Type(INT_TYPE_NAME, false);
             case ARRAY_CREATION_OP -> getArrayType(expr, table, currentMethod);
-            case NEW_OP_ARRAY -> getNewOpType(expr, table, currentMethod);
-            case NEW_OP_OBJECT -> getNewOpType(expr, table, currentMethod);
+            case NEW_OP_ARRAY, NEW_OP_OBJECT -> getNewOpType(expr, table, currentMethod);
             case MEMBER_ACCESS_OP -> getMemberAccessType(expr, table, currentMethod);
             case THIS -> new Type(table.getClassName(), false);
-            case LENGTH_OP -> new Type(INT_TYPE_NAME, false);
-            case VAR_DECL -> getIdentifierType(expr, table, currentMethod);
-            case PAREN_OP -> getExprType(expr.getChild(0), table, currentMethod);
+            case PAREN_OP, UNARY_OP -> getExprType(expr.getChild(0), table, currentMethod);
             case IDENTIFIER_TYPE -> new Type(expr.get("typeName"), false);
             default -> throw new UnsupportedOperationException("Can't compute type for expression kind '" + kind + "'");
         };
